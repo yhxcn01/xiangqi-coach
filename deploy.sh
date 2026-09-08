@@ -29,9 +29,12 @@ command -v curl >/dev/null || { echo "需要 curl"; exit 1; }
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "请在项目目录运行"; exit 1; }
 
 echo "==> 1/3 创建仓库 $OWNER/$REPO（已存在则跳过）"
+# 注意：JSON 走临时文件传给 curl。Windows 的 curl.exe 会把命令行参数里的
+# 中文按本地代码页（GBK）转码，导致 GitHub 返回 "Problems parsing JSON"。
+printf '{"name":"%s","description":"象棋思考教练 - Rust 引擎 + WASM，手机/平板可玩","private":false}' "$REPO" > /tmp/xq_payload.json
 HTTP=$(curl -s -o /tmp/xq_repo.json -w "%{http_code}" -X POST "$API/user/repos" \
-  -H "$AUTH" -H "Accept: application/vnd.github+json" \
-  -d "{\"name\":\"$REPO\",\"description\":\"象棋思考教练 - Rust 引擎 + WASM，手机/平板可玩\",\"private\":false}" || true)
+  -H "$AUTH" -H "Accept: application/vnd.github+json" -H "Content-Type: application/json" \
+  --data-binary @/tmp/xq_payload.json || true)
 if [ "$HTTP" = "201" ]; then
   echo "    仓库已创建"
 elif grep -q "already exists" /tmp/xq_repo.json 2>/dev/null; then
@@ -52,9 +55,10 @@ GIT_TERMINAL_PROMPT=0 git \
 echo "    推送完成"
 
 echo "==> 3/3 开启 GitHub Pages（main 分支根目录，已开启则跳过）"
+printf '{"source":{"branch":"main","path":"/"}}' > /tmp/xq_pages_payload.json
 HTTP=$(curl -s -o /tmp/xq_pages.json -w "%{http_code}" -X POST "$API/repos/$OWNER/$REPO/pages" \
-  -H "$AUTH" -H "Accept: application/vnd.github+json" \
-  -d '{"source":{"branch":"main","path":"/"}}' || true)
+  -H "$AUTH" -H "Accept: application/vnd.github+json" -H "Content-Type: application/json" \
+  --data-binary @/tmp/xq_pages_payload.json || true)
 if [ "$HTTP" = "201" ]; then
   echo "    Pages 已开启"
 elif [ "$HTTP" = "409" ]; then
