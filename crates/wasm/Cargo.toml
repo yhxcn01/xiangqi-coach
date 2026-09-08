@@ -1,0 +1,13 @@
+[package]
+name = "xqwasm"
+version = "0.1.0"
+edition = "2021"
+description = "象棋思考教练 WASM 导出层（C ABI + JSON），供纯静态网站使用"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+xqcore = { path = "../core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

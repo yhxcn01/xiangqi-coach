@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#2b1d0e">
+<title>象棋思考教练</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { overscroll-behavior-y: contain; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #2b1d0e;
+    background-image: radial-gradient(ellipse at top, #3d2a14 0%, #241708 70%);
+    min-height: 100vh; color: #f0e6d2;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 10px 8px calc(24px + env(safe-area-inset-bottom));
+  }
+  h1 { font-size: 21px; letter-spacing: 5px; color: #f5d9a8; font-family: KaiTi, STKaiti, serif; }
+  .subtitle { font-size: 11px; color: #b89a6a; margin: 2px 0 8px; letter-spacing: 1px; }
+  .wrap { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; align-items: flex-start; width: 100%; max-width: 980px; }
+  .board-col { width: 100%; display: flex; justify-content: center; }
+  .board-wrap {
+    background: linear-gradient(145deg, #e8c07a, #d4a552);
+    border-radius: 10px; padding: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.55), inset 0 0 0 2px #8a5a24;
+    line-height: 0;
+  }
+  canvas { display: block; touch-action: manipulation; border-radius: 4px; }
+  .side { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 10px; }
+  .card {
+    background: rgba(255,244,220,.06); border: 1px solid rgba(245,217,168,.22);
+    border-radius: 10px; padding: 12px;
+  }
+  .status { font-size: 15px; min-height: 22px; color: #f5d9a8; text-align: center; }
+  .status .check { color: #ff7b6b; font-weight: bold; }
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  button {
+    border: none; border-radius: 8px; padding: 11px 8px; font-size: 14px;
+    min-height: 44px; cursor: pointer; transition: all .15s; font-family: inherit;
+    touch-action: manipulation;
+  }
+  .btn-primary { background: linear-gradient(145deg,#c0392b,#a5281b); color: #fff; grid-column: span 2; font-size: 15px; }
+  .btn-primary:active { filter: brightness(1.2); }
+  .btn-review { background: linear-gradient(145deg,#1e7d4f,#16633d); color: #fff; grid-column: span 2; }
+  .btn-secondary { background: rgba(245,217,168,.15); color: #f5d9a8; border: 1px solid rgba(245,217,168,.3); }
+  .btn-secondary:active { background: rgba(245,217,168,.3); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .explain-box { min-height: 90px; font-size: 14px; line-height: 1.75; white-space: pre-wrap; }
+  .explain-box .src { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px; margin-bottom: 8px; }
+  .src-ai { background: #1e7d4f; color: #d8ffe9; }
+  .src-fallback { background: #7a5a1e; color: #ffe9c0; }
+  .thinking { color: #b89a6a; }
+  .review-rows { max-height: 260px; overflow-y: auto; font-size: 13px; line-height: 1.9; }
+  .review-row.warn span { color: #ffb45e; }
+  .review-row.bad span { color: #ff7b6b; font-weight: bold; }
+  .review-row b { color: #f5d9a8; font-weight: normal; margin-right: 4px; }
+  #reviewProgress { font-size: 12px; color: #b89a6a; margin-top: 6px; }
+  .history { max-height: 150px; overflow-y: auto; font-size: 13px; line-height: 1.9; columns: 2; column-gap: 18px; }
+  .history span { color: #d9c49a; }
+  .history b { color: #f5d9a8; font-weight: normal; }
+  .modal-mask {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none;
+    align-items: center; justify-content: center; z-index: 10; padding: 16px;
+  }
+  .modal-mask.show { display: flex; }
+  .modal { background: #33240f; border: 1px solid #8a5a24; border-radius: 12px; padding: 20px; width: 100%; max-width: 360px; }
+  .modal h3 { color: #f5d9a8; margin-bottom: 12px; font-size: 16px; }
+  .modal label { font-size: 12px; color: #b89a6a; display: block; margin: 10px 0 4px; }
+  .modal input {
+    width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #8a5a24;
+    background: #241708; color: #f0e6d2; font-size: 14px; outline: none;
+  }
+  .modal .tip { font-size: 11px; color: #8a7452; margin-top: 10px; line-height: 1.7; }
+  .modal .tip a { color: #d9a95e; }
+  .modal .row { display: flex; gap: 8px; margin-top: 14px; }
+  .modal .row button { flex: 1; }
+  .over-banner {
+    position: fixed; top: 38%; left: 50%; transform: translate(-50%,-50%);
+    background: rgba(20,12,4,.92); border: 2px solid #c0392b; color: #ffd9a0;
+    padding: 18px 30px; border-radius: 12px; font-size: 18px; display: none; z-index: 9;
+    font-family: KaiTi, STKaiti, serif; letter-spacing: 2px; text-align: center; max-width: 86vw;
+  }
+  .toast {
+    position: fixed; bottom: 12vh; left: 50%; transform: translateX(-50%);
+    background: rgba(20,12,4,.92); color: #ffd9a0; border: 1px solid #8a5a24;
+    padding: 10px 20px; border-radius: 10px; font-size: 13px; z-index: 20; display: none;
+    max-width: 86vw; text-align: center;
+  }
+  @media (min-width: 960px) {
+    body { padding-top: 20px; }
+    h1 { font-size: 26px; }
+    .board-col { width: auto; flex: 1 1 auto; }
+    .side { width: 360px; max-width: 360px; flex: 0 0 360px; }
+  }
+</style>
+</head>
+<body>
+<h1>象棋思考教练</h1>
+<div class="subtitle">引擎是大脑 · AI 是嘴 —— 每步棋都给你讲明白</div>
+<div class="wrap">
+  <div class="board-col">
+    <div class="board-wrap"><canvas id="board" width="560" height="620"></canvas></div>
+  </div>
+  <div class="side">
+    <div class="card"><div class="status" id="status">载入中…</div></div>
+    <div class="card btns">
+      <button class="btn-primary" id="btnExplainPos">🧑‍🏫 AI 讲解当前局面</button>
+      <button class="btn-secondary" id="btnExplainPiece" disabled>🎯 讲解这枚棋</button>
+      <button class="btn-secondary" id="btnUndo" disabled>🔁 悔棋</button>
+      <button class="btn-secondary" id="btnNew">🆕 新对局</button>
+      <button class="btn-secondary" id="btnSettings">⚙️ AI 设置</button>
+      <button class="btn-review" id="btnReview" disabled>🔍 复盘分析（找出亏损着法）</button>
+    </div>
+    <div class="card">
+      <div class="explain-box" id="explain"><span class="thinking">选中棋子可走棋；点「AI 讲解当前局面」，教练告诉你这局面该怎么想。</span></div>
+    </div>
+    <div class="card" id="reviewCard" style="display:none;">
+      <div class="review-rows" id="reviewRows"></div>
+      <div id="reviewProgress"></div>
+    </div>
+    <div class="card">
+      <div class="history" id="history"><span>尚未走子</span></div>
+    </div>
+  </div>
+</div>
+<div class="over-banner" id="overBanner"></div>
+<div class="toast" id="toast"></div>
+
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <h3>⚙️ AI 讲解服务设置</h3>
+    <label>接口地址（OpenAI 兼容）</label>
+    <input id="inpBase" placeholder="https://open.bigmodel.cn/api/paas/v4">
+    <label>API Key</label>
+    <input id="inpKey" type="password" placeholder="留空则使用引擎基础提示">
+    <label>模型</label>
+    <input id="inpModel" placeholder="glm-4.7-flash">
+    <div class="tip">推荐智谱 GLM-4.7-Flash：免费模型，在 <a href="https://open.bigmodel.cn/" target="_blank" rel="noopener">open.bigmodel.cn</a> 注册即可免费领 Key，讲棋零成本。Key 只保存在你自己的设备上。<br>不配 Key 也能完整下棋，讲解自动降级为引擎基础提示。</div>
+    <div class="row">
+      <button class="btn-secondary" id="btnCancel">取消</button>
+      <button class="btn-secondary" id="btnSave" style="background:#1e7d4f;border-color:#1e7d4f;color:#fff;">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

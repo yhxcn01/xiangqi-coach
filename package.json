@@ -1,0 +1,9 @@
+{
+  "name": "xiangqi-coach",
+  "version": "0.1.0",
+  "private": true,
+  "description": "象棋思考教练 — 引擎是大脑，AI 是嘴",
+  "scripts": {
+    "dev": "cargo run -p xiangqi-coach --"
+  }
+}

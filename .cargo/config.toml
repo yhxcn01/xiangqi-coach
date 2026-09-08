@@ -1,0 +1,8 @@
+# Windows GNU 工具链链接配置。
+# 链接器固定用 rustup self-contained 内的 MinGW-Builds gcc 14.1.0（posix-seh）；
+# 系统盘上 D:\mingw64 的 gcc 8.1.0 是 posix-sjlj 版，不提供 _Unwind_Resume 等
+# SEH 符号，无法链接 Rust windows-gnu 目标，切勿改回。
+# 注意：若 rustup 更新工具链，需确认 self-contained 目录内容仍存在。
+[target.x86_64-pc-windows-gnu]
+linker = "C:\\Users\\yhxcn\\.rustup\\toolchains\\stable-x86_64-pc-windows-gnu\\lib\\rustlib\\x86_64-pc-windows-gnu\\bin\\self-contained\\x86_64-w64-mingw32-gcc.exe"
+rustflags = ["-C", "link-self-contained=yes"]

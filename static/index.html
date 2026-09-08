@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>象棋思考教练</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #2b1d0e;
+    background-image: radial-gradient(ellipse at top, #3d2a14 0%, #241708 70%);
+    min-height: 100vh; color: #f0e6d2;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 18px 12px 40px;
+  }
+  h1 { font-size: 26px; letter-spacing: 6px; color: #f5d9a8; margin-bottom: 2px; font-family: KaiTi, STKaiti, serif; }
+  .subtitle { font-size: 12px; color: #b89a6a; margin-bottom: 14px; letter-spacing: 1px; }
+  .main { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  .board-wrap {
+    background: linear-gradient(145deg, #e8c07a, #d4a552);
+    border-radius: 10px; padding: 14px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.55), inset 0 0 0 2px #8a5a24;
+  }
+  canvas { display: block; cursor: pointer; border-radius: 4px; }
+  .panel { width: 340px; display: flex; flex-direction: column; gap: 12px; }
+  .card {
+    background: rgba(255,244,220,.06); border: 1px solid rgba(245,217,168,.22);
+    border-radius: 10px; padding: 14px;
+  }
+  .status { font-size: 15px; min-height: 22px; color: #f5d9a8; }
+  .status .check { color: #ff7b6b; font-weight: bold; }
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  button {
+    border: none; border-radius: 8px; padding: 10px 8px; font-size: 14px;
+    cursor: pointer; transition: all .15s; font-family: inherit;
+  }
+  .btn-primary { background: linear-gradient(145deg,#c0392b,#a5281b); color: #fff; grid-column: span 2; font-size: 15px; }
+  .btn-primary:hover { filter: brightness(1.15); }
+  .btn-secondary { background: rgba(245,217,168,.15); color: #f5d9a8; border: 1px solid rgba(245,217,168,.3); }
+  .btn-secondary:hover { background: rgba(245,217,168,.28); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .explain-box { min-height: 130px; font-size: 14px; line-height: 1.75; white-space: pre-wrap; }
+  .explain-box .src { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px; margin-bottom: 8px; }
+  .src-ai { background: #1e7d4f; color: #d8ffe9; }
+  .src-fallback { background: #7a5a1e; color: #ffe9c0; }
+  .thinking { color: #b89a6a; }
+  .history { max-height: 180px; overflow-y: auto; font-size: 13px; line-height: 1.9; columns: 2; column-gap: 18px; }
+  .history span { color: #d9c49a; }
+  .history b { color: #f5d9a8; font-weight: normal; }
+  .modal-mask {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none;
+    align-items: center; justify-content: center; z-index: 10;
+  }
+  .modal-mask.show { display: flex; }
+  .modal { background: #33240f; border: 1px solid #8a5a24; border-radius: 12px; padding: 22px; width: 340px; }
+  .modal h3 { color: #f5d9a8; margin-bottom: 14px; font-size: 16px; }
+  .modal label { font-size: 12px; color: #b89a6a; display: block; margin: 10px 0 4px; }
+  .modal input {
+    width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid #8a5a24;
+    background: #241708; color: #f0e6d2; font-size: 13px; outline: none;
+  }
+  .modal .tip { font-size: 11px; color: #8a7452; margin-top: 10px; line-height: 1.6; }
+  .modal .row { display: flex; gap: 8px; margin-top: 16px; }
+  .modal .row button { flex: 1; }
+  .over-banner {
+    position: fixed; top: 40%; left: 50%; transform: translate(-50%,-50%);
+    background: rgba(20,12,4,.92); border: 2px solid #c0392b; color: #ffd9a0;
+    padding: 20px 40px; border-radius: 12px; font-size: 20px; display: none; z-index: 9;
+    font-family: KaiTi, STKaiti, serif; letter-spacing: 2px; text-align: center;
+  }
+</style>
+</head>
+<body>
+<h1>象棋思考教练</h1>
+<div class="subtitle">引擎是大脑 · AI 是嘴 —— 每步棋都给你讲明白</div>
+<div class="main">
+  <div class="board-wrap"><canvas id="board" width="560" height="620"></canvas></div>
+  <div class="panel">
+    <div class="card">
+      <div class="status" id="status">载入中…</div>
+    </div>
+    <div class="card btns">
+      <button class="btn-primary" id="btnExplainPos">🧑‍🏫 AI 讲解当前局面</button>
+      <button class="btn-secondary" id="btnExplainPiece" disabled>🎯 讲解这枚棋</button>
+      <button class="btn-secondary" id="btnUndo">🔁 悔棋</button>
+      <button class="btn-secondary" id="btnNew">🆕 新对局</button>
+      <button class="btn-secondary" id="btnSettings">⚙️ AI 设置</button>
+    </div>
+    <div class="card">
+      <div class="explain-box" id="explain"><span class="thinking">选中棋子可走棋；点「AI 讲解当前局面」，教练告诉你这局面该怎么想。</span></div>
+    </div>
+    <div class="card">
+      <div class="history" id="history"></div>
+    </div>
+  </div>
+</div>
+<div class="over-banner" id="overBanner"></div>
+
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <h3>⚙️ AI 讲解服务设置</h3>
+    <label>接口地址（OpenAI 兼容）</label>
+    <input id="inpBase" placeholder="https://open.bigmodel.cn/api/paas/v4">
+    <label>API Key</label>
+    <input id="inpKey" type="password" placeholder="留空则使用引擎基础提示">
+    <label>模型</label>
+    <input id="inpModel" placeholder="glm-4.7-flash">
+    <div class="tip">推荐智谱 GLM-4.7-Flash：免费模型，在 open.bigmodel.cn 注册即可免费领 Key，讲棋零成本。<br>不配 Key 也能完整下棋，讲解会自动降级为引擎基础提示。</div>
+    <div class="row">
+      <button class="btn-secondary" id="btnCancel">取消</button>
+      <button class="btn-secondary" id="btnSave" style="background:#1e7d4f;border-color:#1e7d4f;color:#fff;">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CELL = 60, PAD = 40, W = 9, H = 10;
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const CHARS = {1:'帅',2:'仕',3:'相',4:'马',5:'车',6:'炮',7:'兵','-1':'将','-2':'士','-3':'象','-4':'马','-5':'车','-6':'砲','-7':'卒'};
+let state = null, selected = -1, targets = [], busy = false, typeTimer = null;
+
+const X = c => PAD + c * CELL, Y = r => PAD + r * CELL;
+
+function drawBoard() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = '#5d3c14'; ctx.lineWidth = 1.5;
+  // 横线
+  for (let r = 0; r < H; r++) line(X(0), Y(r), X(8), Y(r));
+  // 竖线（河中断开）
+  for (let c = 0; c < W; c++) {
+    if (c === 0 || c === 8) line(X(c), Y(0), X(c), Y(9));
+    else { line(X(c), Y(0), X(c), Y(4)); line(X(c), Y(5), X(c), Y(9)); }
+  }
+  ctx.lineWidth = 3; ctx.strokeRect(X(0)-6, Y(0)-6, CELL*8+12, CELL*9+12);
+  ctx.lineWidth = 1.5;
+  // 九宫斜线
+  line(X(3), Y(0), X(5), Y(2)); line(X(5), Y(0), X(3), Y(2));
+  line(X(3), Y(7), X(5), Y(9)); line(X(5), Y(7), X(3), Y(9));
+  // 兵炮位标记
+  [[1,2],[7,2],[0,3],[2,3],[4,3],[6,3],[8,3],[1,7],[7,7],[0,6],[2,6],[4,6],[6,6],[8,6]].forEach(([c,r]) => star(c, r));
+  // 楚河汉界
+  ctx.fillStyle = '#5d3c14'; ctx.font = '28px KaiTi, STKaiti, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('楚    河', PAD + CELL * 2, Y(4.5));
+  ctx.fillText('汉    界', PAD + CELL * 6, Y(4.5));
+}
+function line(x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+function star(c, r) {
+  const d = 5, l = 10;
+  for (const [sx, sy] of [[1,1],[1,-1],[-1,1],[-1,-1]]) {
+    if ((c === 0 && sx < 0) || (c === 8 && sx > 0)) continue;
+    const x = X(c) + sx * d, y = Y(r) + sy * d;
+    line(x, y, x + sx * l, y); line(x, y, x, y + sy * l);
+  }
+}
+function drawPieces() {
+  if (!state) return;
+  state.cells.forEach((p, i) => {
+    if (p === 0) return;
+    const r = Math.floor(i / 9), c = i % 9;
+    const x = X(c), y = Y(r);
+    ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI * 2);
+    ctx.fillStyle = i === selected ? '#ffe9b0' : '#f8ecc9';
+    ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = p > 0 ? '#c0392b' : '#2c3e50'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, 21, 0, Math.PI * 2); ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = p > 0 ? '#c0392b' : '#2c3e50';
+    ctx.font = '26px KaiTi, STKaiti, "SimSun", serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(CHARS[p], x, y + 1);
+  });
+  // 可走点
+  targets.forEach(t => {
+    const r = Math.floor(t / 9), c = t % 9;
+    ctx.beginPath(); ctx.arc(X(c), Y(r), state.cells[t] !== 0 ? 27 : 7, 0, Math.PI * 2);
+    ctx.strokeStyle = '#1e7d4f'; ctx.fillStyle = 'rgba(30,125,79,.5)'; ctx.lineWidth = 2.5;
+    state.cells[t] !== 0 ? ctx.stroke() : ctx.fill();
+  });
+}
+function redraw() { drawBoard(); drawPieces(); }
+
+async function api(path, body) {
+  const opt = body === undefined ? {} : { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) };
+  const resp = await fetch(path, opt);
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || data.message || data || '请求失败');
+  return data;
+}
+
+async function refresh() {
+  state = await api('/api/state');
+  redraw();
+  renderStatus(); renderHistory();
+  document.getElementById('btnExplainPiece').disabled = selected < 0;
+}
+function renderStatus() {
+  const el = document.getElementById('status');
+  if (state.game_over) { el.innerHTML = '🏁 ' + state.game_over; showOver(state.game_over); return; }
+  hideOver();
+  const turn = state.red_turn ? '🔴 红方（你）走棋' : '⚫ 黑方（教练引擎）思考中…';
+  el.innerHTML = turn + (state.in_check ? ' <span class="check">将军！</span>' : '');
+}
+function renderHistory() {
+  const el = document.getElementById('history');
+  let html = '';
+  state.history.forEach((n, i) => {
+    if (i % 2 === 0) html += `<b>${Math.floor(i/2)+1}. </b>`;
+    html += `<span>${n}</span> `;
+  });
+  el.innerHTML = html || '<span>尚未走子</span>';
+  el.scrollTop = el.scrollHeight;
+}
+function showOver(t) { const b = document.getElementById('overBanner'); b.textContent = t; b.style.display = 'block'; }
+function hideOver() { document.getElementById('overBanner').style.display = 'none'; }
+
+canvas.addEventListener('click', async e => {
+  if (busy || !state || state.game_over || !state.red_turn) return;
+  const rect = canvas.getBoundingClientRect();
+  const c = Math.round((e.clientX - rect.left - PAD) / CELL);
+  const r = Math.round((e.clientY - rect.top - PAD) / CELL);
+  if (r < 0 || r > 9 || c < 0 || c > 8) return;
+  const i = r * 9 + c;
+  const p = state.cells[i];
+  if (selected >= 0 && targets.includes(i)) {
+    busy = true;
+    try {
+      state = await api('/api/move', { from: selected, to: i });
+      selected = -1; targets = [];
+      redraw(); renderStatus(); renderHistory();
+      if (!state.game_over) setTimeout(engineReply, 350);
+    } catch (err) { alert(err.message); }
+    busy = false;
+    return;
+  }
+  if (p > 0) {
+    selected = i;
+    const d = await api('/api/legal/' + i);
+    targets = d.targets;
+  } else {
+    selected = -1; targets = [];
+  }
+  document.getElementById('btnExplainPiece').disabled = selected < 0;
+  redraw();
+});
+
+async function engineReply() {
+  try {
+    state = await api('/api/engine_move', {});
+    redraw(); renderStatus(); renderHistory();
+  } catch (e) { /* 对局结束等情况忽略 */ }
+}
+
+function typewriter(text, source) {
+  const el = document.getElementById('explain');
+  if (typeTimer) clearInterval(typeTimer);
+  const badge = source === 'ai'
+    ? '<span class="src src-ai">AI 棋理讲解</span><br>'
+    : '<span class="src src-fallback">引擎基础提示（未配置 AI）</span><br>';
+  let i = 0;
+  typeTimer = setInterval(() => {
+    i += 2;
+    el.innerHTML = badge + escapeHtml(text.slice(0, i)).replace(/\n/g, '<br>');
+    if (i >= text.length) clearInterval(typeTimer);
+  }, 24);
+}
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+document.getElementById('btnExplainPos').onclick = async () => {
+  const el = document.getElementById('explain');
+  el.innerHTML = '<span class="thinking">教练思考中…</span>';
+  try {
+    const d = await api('/api/explain/position', {});
+    typewriter(d.text, d.source);
+  } catch (e) { el.innerHTML = '<span class="thinking">讲解失败：' + escapeHtml(e.message) + '</span>'; }
+};
+document.getElementById('btnExplainPiece').onclick = async () => {
+  if (selected < 0) return;
+  const el = document.getElementById('explain');
+  el.innerHTML = '<span class="thinking">教练分析这枚棋…</span>';
+  try {
+    const d = await api('/api/explain/piece', { square: selected });
+    typewriter(d.text, d.source);
+  } catch (e) { el.innerHTML = '<span class="thinking">讲解失败：' + escapeHtml(e.message) + '</span>'; }
+};
+document.getElementById('btnUndo').onclick = async () => { selected = -1; targets = []; await api('/api/undo', {}); refresh(); };
+document.getElementById('btnNew').onclick = async () => { selected = -1; targets = []; await api('/api/new', {}); refresh(); };
+
+const mask = document.getElementById('modalMask');
+document.getElementById('btnSettings').onclick = async () => {
+  const s = await api('/api/settings');
+  document.getElementById('inpBase').value = s.base_url || '';
+  document.getElementById('inpModel').value = s.model || '';
+  document.getElementById('inpKey').value = '';
+  document.getElementById('inpKey').placeholder = s.has_key ? '已保存（输入新 Key 可更换）' : 'sk-...（留空则使用引擎基础提示）';
+  mask.classList.add('show');
+};
+document.getElementById('btnCancel').onclick = () => mask.classList.remove('show');
+mask.onclick = e => { if (e.target === mask) mask.classList.remove('show'); };
+document.getElementById('btnSave').onclick = async () => {
+  const body = {
+    base_url: document.getElementById('inpBase').value,
+    model: document.getElementById('inpModel').value,
+  };
+  const key = document.getElementById('inpKey').value.trim();
+  if (key) body.api_key = key;
+  await api('/api/settings', body);
+  mask.classList.remove('show');
+  refresh();
+};
+
+refresh();
+</script>
+</body>
+</html>

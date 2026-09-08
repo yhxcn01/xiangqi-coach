@@ -1,0 +1,8 @@
+[package]
+name = "xqcore"
+version = "0.1.0"
+edition = "2021"
+description = "象棋思考教练核心库：规则、引擎、讲解文案（纯计算，服务端与 WASM 共用）"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
