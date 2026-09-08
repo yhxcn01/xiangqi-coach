@@ -1,6 +1,6 @@
 # 部署指南 — 上线到外网（手机/平板可玩）
 
-本项目的 `web/` 目录是**纯静态站点**（棋盘 + WASM 引擎全部在浏览器里运行，无服务器），
+本项目的 `docs/` 目录是**纯静态站点**（棋盘 + WASM 引擎全部在浏览器里运行，无服务器），
 按 [free-for.dev](https://free-for.dev/#/tools) 收录的免费托管 **GitHub Pages** 部署，费用为零。
 
 ## 方式一：一条命令（推荐）
@@ -50,9 +50,9 @@
 
   ```bash
   cargo build -p xqwasm --target wasm32-unknown-unknown --release
-  cp target/wasm32-unknown-unknown/release/xqwasm.wasm web/
+  cp target/wasm32-unknown-unknown/release/xqwasm.wasm docs/
   git add -A && git commit -m "更新" && git push
   ```
 
-- **本地预览**：项目目录下 `python -m http.server 8123`（在 `web/` 里运行），打开 http://127.0.0.1:8123/
+- **本地预览**：项目目录下 `python -m http.server 8123`（在 `docs/` 里运行），打开 http://127.0.0.1:8123/
   注意：不能用 `file://` 直接打开（Worker 与 fetch 限制）。
