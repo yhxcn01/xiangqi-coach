@@ -135,8 +135,12 @@
     <label>API Key</label>
     <input id="inpKey" type="password" placeholder="留空则使用引擎基础提示">
     <label>模型</label>
-    <input id="inpModel" placeholder="glm-4.7-flash">
-    <div class="tip">推荐智谱 GLM-4.7-Flash：免费模型，在 <a href="https://open.bigmodel.cn/" target="_blank" rel="noopener">open.bigmodel.cn</a> 注册即可免费领 Key，讲棋零成本。Key 只保存在你自己的设备上。<br>不配 Key 也能完整下棋，讲解自动降级为引擎基础提示。</div>
+    <input id="inpModel" list="modelOptions" placeholder="glm-4.7-flash">
+    <datalist id="modelOptions">
+      <option value="glm-4.7-flash"></option>
+      <option value="glm-5.3-flash"></option>
+    </datalist>
+    <div class="tip">glm-4.7-flash：免费模型（推荐），在 <a href="https://open.bigmodel.cn/" target="_blank" rel="noopener">open.bigmodel.cn</a> 注册即可免费领 Key，讲棋零成本。<br>glm-5.3-flash：GLM-5 系列旗舰 Flash，讲解更细腻，但按 token 计费（约为 GLM-5.3 定价的 1/10），账户需有余额。<br>Key 只保存在你自己的设备上。不配 Key 也能完整下棋，讲解自动降级为引擎基础提示。</div>
     <div class="row">
       <button class="btn-secondary" id="btnCancel">取消</button>
       <button class="btn-secondary" id="btnSave" style="background:#1e7d4f;border-color:#1e7d4f;color:#fff;">保存</button>
@@ -144,6 +148,6 @@
   </div>
 </div>
 
-<script src="app.js?v=2"></script>
+<script src="app.js?v=3"></script>
 </body>
 </html>
