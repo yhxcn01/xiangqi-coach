@@ -15,7 +15,7 @@ let busy = false, reviewBusy = false, typeTimer = null;
 let settings = { base_url: 'https://open.bigmodel.cn/api/paas/v4', key: '', model: 'glm-4.7-flash' };
 
 // ---------- Worker RPC ----------
-const worker = new Worker('worker.js');
+const worker = new Worker('worker.js?v=2');
 let rpcId = 0;
 const pending = new Map();
 worker.onmessage = (e) => {
@@ -134,8 +134,8 @@ function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 function render() {
   draw(); renderStatus(); renderHistory();
   $('btnUndo').disabled = busy || reviewBusy || !moves.length;
-  $('btnExplainPiece').disabled = busy || reviewBusy || selected < 0;
-  $('btnExplainPos').disabled = busy || reviewBusy;
+  $('btnExplainPiece').disabled = busy || reviewBusy || explaining || selected < 0;
+  $('btnExplainPos').disabled = busy || reviewBusy || explaining;
   $('btnReview').disabled = busy || reviewBusy || !moves.length;
   $('btnNew').disabled = busy || reviewBusy;
 }
@@ -229,7 +229,7 @@ async function engineGo() {
 }
 
 // ---------- 讲解 ----------
-async function callLLM(system, prompt) {
+async function callLLMOnce(system, prompt) {
   const base = (settings.base_url || '').replace(/\/+$/, '');
   const resp = await fetch(base + '/chat/completions', {
     method: 'POST',
@@ -241,16 +241,45 @@ async function callLLM(system, prompt) {
     }),
     signal: AbortSignal.timeout(30000),
   });
-  if (!resp.ok) throw new Error('AI 服务返回 ' + resp.status);
+  if (!resp.ok) {
+    // 透出服务商返回的具体原因（限流/Key 无效/未实名等）
+    let detail = '';
+    try {
+      const v = await resp.json();
+      detail = (v && v.error && (v.error.message || v.error.code)) || String(v).slice(0, 120);
+    } catch (_) {
+      detail = await resp.text().catch(() => '');
+    }
+    const err = new Error('AI 服务返回 ' + resp.status + (detail ? '：' + String(detail).slice(0, 150) : ''));
+    err.status = resp.status;
+    throw err;
+  }
   const v = await resp.json();
   const t = v && v.choices && v.choices[0] && v.choices[0].message && v.choices[0].message.content;
   if (!t || !t.trim()) throw new Error('AI 返回内容为空');
   return t.trim();
 }
 
+// 免费模型并发/频率限流（429）常见，按 2s/4s 退避自动重试两次
+async function callLLM(system, prompt) {
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await callLLMOnce(system, prompt);
+    } catch (e) {
+      lastErr = e;
+      if (e.status !== 429 || attempt === 2) break;
+      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+    }
+  }
+  throw lastErr;
+}
+
+let explaining = false;
 async function explain(kind) {
-  if (busy || reviewBusy) return;
+  if (busy || reviewBusy || explaining) return;
   const el = $('explain');
+  explaining = true; render();
   el.innerHTML = '<span class="thinking">教练思考中…</span>';
   try {
     const d = kind === 'position'
@@ -262,13 +291,15 @@ async function explain(kind) {
         text = await callLLM(d.system, d.prompt);
         src = 'ai';
       } catch (e) {
-        text = d.fallback + '\n（AI 讲解失败：' + e.message + '，已用引擎基础提示）';
+        const hint = e.status === 429 ? '（免费模型限流，自动重试后仍失败：稍等几秒再点一次）' : '';
+        text = d.fallback + '\n（AI 讲解失败：' + e.message + hint + '，已用引擎基础提示）';
       }
     }
     typewriter(text, src);
   } catch (e) {
     el.innerHTML = '<span class="thinking">讲解失败：' + esc(e.message) + '</span>';
   }
+  explaining = false; render();
 }
 
 // ---------- 复盘 ----------
