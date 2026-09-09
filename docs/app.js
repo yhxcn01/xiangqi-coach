@@ -15,7 +15,7 @@ let busy = false, reviewBusy = false, typeTimer = null;
 let settings = { base_url: 'https://open.bigmodel.cn/api/paas/v4', key: '', model: 'glm-4.7-flash' };
 
 // ---------- Worker RPC ----------
-const worker = new Worker('worker.js?v=2');
+const worker = new Worker('worker.js?v=3');
 let rpcId = 0;
 const pending = new Map();
 worker.onmessage = (e) => {
@@ -194,12 +194,18 @@ canvas.addEventListener('pointerdown', async (e) => {
   const i = r * 9 + c;
   if (selected >= 0 && targets.includes(i)) { await playerMove(selected, i); return; }
   const p = state.cells[i];
-  if (p > 0) {
+  if (p !== 0) {
     selected = i;
-    try {
-      const d = await rpc('legal', { sq: i });
-      targets = d.targets || [];
-    } catch (_) { targets = []; }
+    if (p > 0) {
+      // 己方棋子：显示可走点
+      try {
+        const d = await rpc('legal', { sq: i });
+        targets = d.targets || [];
+      } catch (_) { targets = []; }
+    } else {
+      // 对方棋子：不可走，但可「讲解这枚棋」（讲它的威胁与应对）
+      targets = [];
+    }
   } else {
     selected = -1; targets = [];
   }
