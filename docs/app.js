@@ -231,14 +231,17 @@ async function engineGo() {
 // ---------- 讲解 ----------
 async function callLLMOnce(system, prompt) {
   const base = (settings.base_url || '').replace(/\/+$/, '');
+  const body = {
+    model: settings.model,
+    messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }],
+    temperature: 0.3, max_tokens: 1200,
+  };
+  // 4.7-flash 是混合思考模型：讲棋不需要深度思考，关掉可避免几十秒延迟与思考吃光 token 预算
+  if (settings.model === 'glm-4.7-flash') body.thinking = { type: 'disabled' };
   const resp = await fetch(base + '/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + settings.key.trim() },
-    body: JSON.stringify({
-      model: settings.model,
-      messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }],
-      temperature: 0.3, max_tokens: 1200,
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(30000),
   });
   if (!resp.ok) {
@@ -255,8 +258,10 @@ async function callLLMOnce(system, prompt) {
     throw err;
   }
   const v = await resp.json();
-  const t = v && v.choices && v.choices[0] && v.choices[0].message && v.choices[0].message.content;
-  if (!t || !t.trim()) throw new Error('AI 返回内容为空');
+  const m = v && v.choices && v.choices[0] && v.choices[0].message;
+  // 思考型模型偶发正文为空但思考有内容：拿思考文本兜底，好过直接报错
+  const t = (m && m.content && m.content.trim()) || (m && m.reasoning_content && String(m.reasoning_content).trim());
+  if (!t) throw new Error('AI 返回内容为空');
   return t.trim();
 }
 
