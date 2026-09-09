@@ -55,7 +55,7 @@ pub async fn call_llm(settings: &Settings, user_prompt: &str) -> Result<String, 
             {"role": "user", "content": user_prompt}
         ],
         "temperature": 0.3,
-        "max_tokens": 600
+        "max_tokens": 1200
     });
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
