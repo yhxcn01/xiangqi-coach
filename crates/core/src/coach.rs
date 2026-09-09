@@ -253,3 +253,77 @@ pub fn make_piece_ctx(b: &Board, from: usize, analysis: &Analysis) -> Option<Pie
         alternatives,
     })
 }
+
+/// 对方棋子讲解的数据上下文（分析在翻转回合的棋盘上进行，评分为对方视角）。
+pub struct OpponentPieceCtx {
+    pub fen: String,        // 真实局面（学员走棋）
+    pub piece: i8,          // 对方的棋子
+    pub from_sq: usize,
+    pub best: Candidate,    // 对方这枚棋的最佳走法
+    pub best_reason: String,
+    pub alternatives: Vec<(Candidate, i32)>, // (走法, 比最佳亏多少分, 对方视角)
+}
+
+pub fn build_opponent_piece_prompt(ctx: &OpponentPieceCtx) -> String {
+    let alts = ctx
+        .alternatives
+        .iter()
+        .take(3)
+        .map(|(c, loss)| format!("{} 亏约 {} 分", describe_candidate(c), loss))
+        .collect::<Vec<_>>()
+        .join("；");
+    format!(
+        "当前局面 FEN：{}（轮到红方学员走棋）。\n学员点选了对方的{}（位置：第{}行第{}列），想了解它的威胁。\n引擎以对方视角分析这枚{}：它接下来最佳走法是 {}，棋理标签：{}。其他走法及亏损：{}。\n请讲解：1) 对方这枚棋现在想干什么、构成什么威胁；2) 如果放任不管，接下来一两步会发生什么；3) 学员现在有哪些应对选择（拦截、兑掉、抢先手），各自的好处与代价。",
+        ctx.fen,
+        piece_char(ctx.piece),
+        row(ctx.from_sq) + 1,
+        col(ctx.from_sq) + 1,
+        piece_char(ctx.piece),
+        describe_candidate(&ctx.best),
+        ctx.best_reason,
+        if alts.is_empty() { "其余走法差别不大".into() } else { alts },
+    )
+}
+
+pub fn fallback_opponent_piece(ctx: &OpponentPieceCtx) -> String {
+    let mut out = format!(
+        "对方的{}（第{}行第{}列）接下来的最佳走法是 {}：{}。\n",
+        piece_char(ctx.piece),
+        row(ctx.from_sq) + 1,
+        col(ctx.from_sq) + 1,
+        describe_candidate(&ctx.best),
+        ctx.best_reason
+    );
+    let threats: Vec<String> = ctx
+        .alternatives
+        .iter()
+        .filter(|(_, loss)| *loss < 120)
+        .take(2)
+        .map(|(c, _)| describe_candidate(c))
+        .collect();
+    if !threats.is_empty() {
+        out.push_str(&format!("还要防它这几手：{}。\n", threats.join("、")));
+    }
+    out.push_str("\n（这是引擎基础提示。在设置里填入 AI 服务 Key，即可获得完整的应对思路讲解。）");
+    out
+}
+
+/// 构造对方棋子讲解上下文：analysis 须来自「翻转回合棋盘」的 analyze_piece。
+pub fn make_opponent_piece_ctx(b: &Board, from: usize, analysis: &Analysis) -> Option<OpponentPieceCtx> {
+    let best = analysis.best.clone()?;
+    let best_score = best.score;
+    let alternatives: Vec<(Candidate, i32)> = analysis
+        .candidates
+        .iter()
+        .skip(1)
+        .map(|c| (c.clone(), best_score - c.score))
+        .collect();
+    Some(OpponentPieceCtx {
+        fen: b.to_fen(),
+        piece: b.cells[from],
+        from_sq: from,
+        best_reason: reason_of(b, &best),
+        best,
+        alternatives,
+    })
+}
