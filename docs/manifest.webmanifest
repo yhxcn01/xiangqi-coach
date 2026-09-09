@@ -1,0 +1,19 @@
+{
+  "name": "象棋思考教练",
+  "short_name": "象棋教练",
+  "description": "引擎是大脑，AI 是嘴 —— 每步棋都给你讲明白",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#2b1d0e",
+  "theme_color": "#2b1d0e",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
