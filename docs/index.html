@@ -131,7 +131,11 @@
   <div class="modal">
     <h3>⚙️ AI 讲解服务设置</h3>
     <label>接口地址（OpenAI 兼容）</label>
-    <input id="inpBase" placeholder="https://open.bigmodel.cn/api/paas/v4">
+    <input id="inpBase" list="baseOptions" placeholder="https://open.bigmodel.cn/api/paas/v4">
+    <datalist id="baseOptions">
+      <option value="https://open.bigmodel.cn/api/paas/v4"></option>
+      <option value="https://open.bigmodel.cn/api/coding/paas/v4"></option>
+    </datalist>
     <label>API Key</label>
     <input id="inpKey" type="password" placeholder="留空则使用引擎基础提示">
     <label>模型</label>
@@ -139,8 +143,9 @@
     <datalist id="modelOptions">
       <option value="glm-4.7-flash"></option>
       <option value="glm-5.3-flash"></option>
+      <option value="glm-5.3"></option>
     </datalist>
-    <div class="tip">glm-4.7-flash：免费模型（推荐），在 <a href="https://open.bigmodel.cn/" target="_blank" rel="noopener">open.bigmodel.cn</a> 注册即可免费领 Key，讲棋零成本。<br>glm-5.3-flash：GLM-5 系列旗舰 Flash，讲解更细腻，但按 token 计费（约为 GLM-5.3 定价的 1/10），账户需有余额。<br>Key 只保存在你自己的设备上。不配 Key 也能完整下棋，讲解自动降级为引擎基础提示。</div>
+    <div class="tip">普通 API Key（含免费 Key）：接口地址用 <b>…/api/paas/v4</b>，模型推荐免费的 glm-4.7-flash。<br>GLM Coding Plan 订阅 Key：接口地址必须选 <b>…/api/coding/paas/v4</b>，模型选 glm-5.3-flash（或 glm-5.3）。<br>Key 只保存在你自己的设备上。不配 Key 也能完整下棋，讲解自动降级为引擎基础提示。</div>
     <div class="row">
       <button class="btn-secondary" id="btnCancel">取消</button>
       <button class="btn-secondary" id="btnSave" style="background:#1e7d4f;border-color:#1e7d4f;color:#fff;">保存</button>
@@ -148,6 +153,6 @@
   </div>
 </div>
 
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
