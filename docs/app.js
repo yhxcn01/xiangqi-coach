@@ -291,7 +291,12 @@ async function explain(kind) {
         text = await callLLM(d.system, d.prompt);
         src = 'ai';
       } catch (e) {
-        const hint = e.status === 429 ? '（免费模型限流，自动重试后仍失败：稍等几秒再点一次）' : '';
+        let hint = '';
+        if (e.status === 429) {
+          hint = /余额不足|资源包/.test(e.message)
+            ? '（此 Key 无该模型的资源包：若用的是 GLM Coding Plan 订阅 Key，请把接口地址改为 https://open.bigmodel.cn/api/coding/paas/v4 并把模型改为 glm-5.3-flash）'
+            : '（免费模型限流，自动重试后仍失败：稍等几秒再点一次）';
+        }
         text = d.fallback + '\n（AI 讲解失败：' + e.message + hint + '，已用引擎基础提示）';
       }
     }
