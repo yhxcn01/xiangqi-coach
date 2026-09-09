@@ -2,7 +2,7 @@
 //! 文案与上下文构造在 xqcore::coach；未配置 Key 或调用失败时自动降级为模板提示。
 
 use serde::{Deserialize, Serialize};
-use xqcore::coach::{self as text, PositionCtx, PieceCtx};
+use xqcore::coach::{self as text, OpponentPieceCtx, PieceCtx, PositionCtx};
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Settings {
@@ -94,5 +94,13 @@ pub async fn explain_piece(settings: &Settings, ctx: &PieceCtx) -> (String, &'st
     match call_llm(settings, &prompt).await {
         Ok(t) => (t, "ai"),
         Err(_) => (text::fallback_piece(ctx), "fallback"),
+    }
+}
+
+pub async fn explain_opponent_piece(settings: &Settings, ctx: &OpponentPieceCtx) -> (String, &'static str) {
+    let prompt = text::build_opponent_piece_prompt(ctx);
+    match call_llm(settings, &prompt).await {
+        Ok(t) => (t, "ai"),
+        Err(_) => (text::fallback_opponent_piece(ctx), "fallback"),
     }
 }
