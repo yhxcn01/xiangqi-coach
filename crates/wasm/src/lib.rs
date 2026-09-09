@@ -224,7 +224,8 @@ pub extern "C" fn xq_explain_position(in_ptr: *const u8, in_len: usize, depth: c
     }))
 }
 
-/// 单枚棋子讲解上下文：返回 {prompt, fallback}。
+/// 单枚棋子讲解上下文：返回 {system, prompt, fallback, mode}。
+/// 己方棋子讲"该怎么走"；对方棋子翻转回合分析，讲"它的威胁与应对"。
 #[no_mangle]
 pub extern "C" fn xq_explain_piece(
     in_ptr: *const u8,
@@ -243,22 +244,42 @@ pub extern "C" fn xq_explain_piece(
     if !(0..90).contains(&square) || board.cells[square as usize] == 0 {
         return emit_err("这里没有棋子");
     }
-    if (board.cells[square as usize] > 0) != board.red_turn {
-        return emit_err("现在不能走对方的棋子");
-    }
-    let analysis = engine::analyze_piece(&board, square as usize, depth);
+    let square = square as usize;
+    let own = (board.cells[square] > 0) == board.red_turn;
+    let analysis_board = if own {
+        board.clone()
+    } else {
+        let mut flipped = board.clone();
+        flipped.red_turn = !flipped.red_turn;
+        flipped
+    };
+    let analysis = engine::analyze_piece(&analysis_board, square, depth);
     if analysis.candidates.is_empty() {
         return emit_err("这枚棋子当前没有合法走法");
     }
-    let ctx = match coach::make_piece_ctx(&board, square as usize, &analysis) {
-        Some(c) => c,
-        None => return emit_err("分析失败"),
-    };
-    emit(&serde_json::json!({
-        "system": coach::SYSTEM_PROMPT,
-        "prompt": coach::build_piece_prompt(&ctx),
-        "fallback": coach::fallback_piece(&ctx),
-    }))
+    if own {
+        let ctx = match coach::make_piece_ctx(&board, square, &analysis) {
+            Some(c) => c,
+            None => return emit_err("分析失败"),
+        };
+        emit(&serde_json::json!({
+            "mode": "own",
+            "system": coach::SYSTEM_PROMPT,
+            "prompt": coach::build_piece_prompt(&ctx),
+            "fallback": coach::fallback_piece(&ctx),
+        }))
+    } else {
+        let ctx = match coach::make_opponent_piece_ctx(&board, square, &analysis) {
+            Some(c) => c,
+            None => return emit_err("分析失败"),
+        };
+        emit(&serde_json::json!({
+            "mode": "opponent",
+            "system": coach::SYSTEM_PROMPT,
+            "prompt": coach::build_opponent_piece_prompt(&ctx),
+            "fallback": coach::fallback_opponent_piece(&ctx),
+        }))
+    }
 }
 
 // ---------- 导出：复盘 ----------
