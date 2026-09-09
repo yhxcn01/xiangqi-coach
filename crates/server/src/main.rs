@@ -196,22 +196,34 @@ async fn explain_piece(
     if req.square >= 90 || board.cells[req.square] == 0 {
         return Err((StatusCode::BAD_REQUEST, "这里没有棋子".into()));
     }
-    if (board.cells[req.square] > 0) != board.red_turn {
-        return Err((StatusCode::BAD_REQUEST, "现在不能走对方的棋子".into()));
-    }
+    let square = req.square;
+    let own = (board.cells[square] > 0) == board.red_turn;
+    // 对方棋子：翻转回合后以对方视角分析（讲威胁与应对）
+    let analysis_board = if own {
+        board.clone()
+    } else {
+        let mut flipped = board.clone();
+        flipped.red_turn = !flipped.red_turn;
+        flipped
+    };
     let depth = engine::default_depth();
-    let b2 = board.clone();
-    let from = req.square;
-    let analysis = tokio::task::spawn_blocking(move || engine::analyze_piece(&b2, from, depth))
+    let b2 = analysis_board.clone();
+    let analysis = tokio::task::spawn_blocking(move || engine::analyze_piece(&b2, square, depth))
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     if analysis.candidates.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "这枚棋子当前没有合法走法".into()));
     }
-    let ctx = xqcore::coach::make_piece_ctx(&board, req.square, &analysis)
-        .ok_or((StatusCode::BAD_REQUEST, "分析失败".to_string()))?;
     let settings = sh.settings.lock().unwrap().clone();
-    let (text, source) = coach::explain_piece(&settings, &ctx).await;
+    let (text, source) = if own {
+        let ctx = xqcore::coach::make_piece_ctx(&board, square, &analysis)
+            .ok_or((StatusCode::BAD_REQUEST, "分析失败".to_string()))?;
+        coach::explain_piece(&settings, &ctx).await
+    } else {
+        let ctx = xqcore::coach::make_opponent_piece_ctx(&board, square, &analysis)
+            .ok_or((StatusCode::BAD_REQUEST, "分析失败".to_string()))?;
+        coach::explain_opponent_piece(&settings, &ctx).await
+    };
     Ok(Json(ExplainResp {
         text,
         source: source.to_string(),
