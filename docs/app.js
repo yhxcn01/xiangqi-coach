@@ -231,18 +231,25 @@ async function engineGo() {
 // ---------- 讲解 ----------
 async function callLLMOnce(system, prompt) {
   const base = (settings.base_url || '').replace(/\/+$/, '');
+  const modelName = settings.model || '';
   const body = {
-    model: settings.model,
+    model: modelName,
     messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }],
-    temperature: 0.3, max_tokens: 1200,
+    temperature: 0.3, max_tokens: 2000,
   };
   // 4.7-flash 是混合思考模型：讲棋不需要深度思考，关掉可避免几十秒延迟与思考吃光 token 预算
-  if (settings.model === 'glm-4.7-flash') body.thinking = { type: 'disabled' };
+  if (modelName === 'glm-4.7-flash') body.thinking = { type: 'disabled' };
+  // 5.3 系思考不可关，但 reasoning_effort=low 可大幅提速（实测 30s+/空回复 -> 9s/322 字正常）
+  if (modelName.startsWith('glm-5.3')) {
+    body.reasoning_effort = 'low';
+    body.thinking = { type: 'enabled' };
+  }
+  const timeoutMs = modelName.startsWith('glm-5.3') ? 60000 : 30000;
   const resp = await fetch(base + '/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + settings.key.trim() },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!resp.ok) {
     // 透出服务商返回的具体原因（限流/Key 无效/未实名等）
