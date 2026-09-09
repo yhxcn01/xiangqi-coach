@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="88" fill="#d4a552"/>
+  <circle cx="256" cy="256" r="196" fill="#f8ecc9" stroke="#c0392b" stroke-width="14"/>
+  <circle cx="256" cy="256" r="170" fill="none" stroke="#c0392b" stroke-width="4"/>
+  <text x="256" y="336" font-size="240" font-family="KaiTi, STKaiti, serif" text-anchor="middle" fill="#c0392b" font-weight="bold">帅</text>
+</svg>
