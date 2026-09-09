@@ -11,7 +11,8 @@ const LS_MOVES = 'xq_moves_v1', LS_SETTINGS = 'xq_settings_v1';
 let moves = [];            // 权威棋谱：[{from,to},...]，刷新后从 localStorage 恢复
 let state = null;          // 最近一次 WASM 返回的状态
 let selected = -1, targets = [];
-let busy = false, reviewBusy = false, typeTimer = null;
+let busy = false, reviewBusy = false, explaining = false, typeTimer = null;
+let lastRate = null; // 最近一手玩家着法的引擎评分 {notation, loss, is_best, best}
 let settings = { base_url: 'https://open.bigmodel.cn/api/paas/v4', key: '', model: 'glm-4.7-flash' };
 
 // ---------- Worker RPC ----------
@@ -143,10 +144,22 @@ function render() {
 function renderStatus() {
   const el = $('status');
   if (!state) { el.textContent = '载入中…'; return; }
-  if (state.game_over) { el.innerHTML = '🏁 ' + esc(state.game_over); showOver(state.game_over); return; }
+  if (state.game_over) {
+    let over = '🏁 ' + esc(state.game_over);
+    if (lastRate) over += lastRate.is_best
+      ? '<br><span class="rate rate-best">✓ 你的' + esc(lastRate.notation) + ' 与引擎最佳一致</span>'
+      : '<br><span class="rate rate-loss">你的' + esc(lastRate.notation) + ' 亏约 ' + lastRate.loss + ' 分（最佳 ' + esc(lastRate.best) + '）</span>';
+    el.innerHTML = over; showOver(state.game_over); return;
+  }
   hideOver();
   const turn = state.red_turn ? '🔴 红方（你）走棋' : '⚫ 黑方（引擎）思考中…';
-  el.innerHTML = turn + (state.in_check ? ' <span class="check">将军！</span>' : '');
+  let html = turn + (state.in_check ? ' <span class="check">将军！</span>' : '');
+  if (lastRate) {
+    html += lastRate.is_best
+      ? ' <span class="rate rate-best">✓ 你的' + esc(lastRate.notation) + ' 与引擎最佳一致</span>'
+      : ' <span class="rate rate-loss">你的' + esc(lastRate.notation) + ' 亏约 ' + lastRate.loss + ' 分（最佳 ' + esc(lastRate.best) + '）</span>';
+  }
+  el.innerHTML = html;
 }
 
 function renderHistory() {
@@ -218,7 +231,13 @@ async function playerMove(from, to) {
     const st = await rpc('move', { from, to });
     moves.push({ from, to });
     state = st; selected = -1; targets = [];
+    lastRate = null;
     persistMoves(); render();
+    // 走子即时评分（对标文章「✓ 最佳」闭环）：与引擎最佳对比
+    try {
+      lastRate = await rpc('rate', { depth: 3 });
+    } catch (_) { lastRate = null; }
+    render();
     if (!state.game_over && !state.red_turn) await engineGo();
   } catch (e) { toast(e.message); }
   busy = false; render();
@@ -235,13 +254,14 @@ async function engineGo() {
 }
 
 // ---------- 讲解 ----------
-async function callLLMOnce(system, prompt) {
+async function callLLMOnce(system, prompt, onDelta) {
   const base = (settings.base_url || '').replace(/\/+$/, '');
   const modelName = settings.model || '';
   const body = {
     model: modelName,
     messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }],
     temperature: 0.3, max_tokens: 2000,
+    stream: true, // 真流式：首字 1~3 秒开始吐出，对齐文章「流式吐字」体验
   };
   // 4.7-flash 是混合思考模型：讲棋不需要深度思考，关掉可避免几十秒延迟与思考吃光 token 预算
   if (modelName === 'glm-4.7-flash') body.thinking = { type: 'disabled' };
@@ -270,20 +290,41 @@ async function callLLMOnce(system, prompt) {
     err.status = resp.status;
     throw err;
   }
-  const v = await resp.json();
-  const m = v && v.choices && v.choices[0] && v.choices[0].message;
-  // 思考型模型偶发正文为空但思考有内容：拿思考文本兜底，好过直接报错
-  const t = (m && m.content && m.content.trim()) || (m && m.reasoning_content && String(m.reasoning_content).trim());
-  if (!t) throw new Error('AI 返回内容为空');
-  return t.trim();
+  // 解析 SSE 流：data: {...} 行，delta.content 为正文，忽略 delta.reasoning_content
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '', acc = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const parts = buf.split('\n\n');
+    buf = parts.pop();
+    for (const part of parts) {
+      for (const line of part.split('\n')) {
+        const t = line.trim();
+        if (!t.startsWith('data:')) continue;
+        const payload = t.slice(5).trim();
+        if (!payload || payload === '[DONE]') continue;
+        try {
+          const j = JSON.parse(payload);
+          const d = j.choices && j.choices[0] && j.choices[0].delta;
+          if (d && d.content) { acc += d.content; if (onDelta) onDelta(d.content); }
+        } catch (_) { /* 忽略残包 */ }
+      }
+    }
+  }
+  const clean = acc.trim();
+  if (!clean) throw new Error('AI 返回内容为空');
+  return clean;
 }
 
 // 免费模型并发/频率限流（429）常见，按 2s/4s 退避自动重试两次
-async function callLLM(system, prompt) {
+async function callLLM(system, prompt, onDelta) {
   let lastErr;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      return await callLLMOnce(system, prompt);
+      return await callLLMOnce(system, prompt, onDelta);
     } catch (e) {
       lastErr = e;
       if (e.status !== 429 || attempt === 2) break;
@@ -293,7 +334,6 @@ async function callLLM(system, prompt) {
   throw lastErr;
 }
 
-let explaining = false;
 async function explain(kind) {
   if (busy || reviewBusy || explaining) return;
   const el = $('explain');
@@ -303,10 +343,17 @@ async function explain(kind) {
     const d = kind === 'position'
       ? await rpc('explain_position', { depth: 4 })
       : await rpc('explain_piece', { sq: selected, depth: 4 });
-    let text = d.fallback, src = 'fallback';
+    let text = d.fallback, src = 'fallback', streamed = false;
     if (settings.key.trim()) {
       try {
-        text = await callLLM(d.system, d.prompt);
+        const badge = '<span class="src src-ai">AI 棋理讲解 · GLM</span><br>';
+        let acc = '';
+        text = await callLLM(d.system, d.prompt, (delta) => {
+          // 真流式直显：首字 1~3 秒即出，不等完整回复
+          acc += delta;
+          el.innerHTML = badge + esc(acc).replace(/\n/g, '<br>');
+          streamed = true;
+        });
         src = 'ai';
       } catch (e) {
         let hint = '';
@@ -318,7 +365,11 @@ async function explain(kind) {
         text = d.fallback + '\n（AI 讲解失败：' + e.message + hint + '，已用引擎基础提示）';
       }
     }
-    typewriter(text, src);
+    if (src === 'ai') {
+      if (!streamed) typewriter(text, 'ai'); // 流式无输出时的兜底
+    } else {
+      typewriter(text, 'fallback');
+    }
   } catch (e) {
     el.innerHTML = '<span class="thinking">讲解失败：' + esc(e.message) + '</span>';
   }
@@ -359,6 +410,7 @@ async function runReview() {
 // ---------- 悔棋 / 新对局 ----------
 async function undo() {
   if (busy || reviewBusy || !moves.length) return;
+  lastRate = null;
   const n = Math.min(2, moves.length);
   moves.splice(moves.length - n, n);
   selected = -1; targets = [];
@@ -371,7 +423,7 @@ async function undo() {
 async function newGame() {
   if (reviewBusy) return;
   if (moves.length && !confirm('要放弃当前对局，重新开始吗？')) return;
-  moves = []; selected = -1; targets = []; state = null;
+  moves = []; selected = -1; targets = []; state = null; lastRate = null;
   persistMoves();
   busy = true; render();
   try { state = await rpc('state'); } catch (_) {}
