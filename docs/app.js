@@ -15,7 +15,7 @@ let busy = false, reviewBusy = false, typeTimer = null;
 let settings = { base_url: 'https://open.bigmodel.cn/api/paas/v4', key: '', model: 'glm-4.7-flash' };
 
 // ---------- Worker RPC ----------
-const worker = new Worker('worker.js?v=3');
+const worker = new Worker('worker.js?v=4');
 let rpcId = 0;
 const pending = new Map();
 worker.onmessage = (e) => {
