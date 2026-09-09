@@ -164,16 +164,20 @@ struct ExplainResp {
 }
 
 async fn explain_position(State(sh): State<Arc<Shared>>) -> Result<Json<ExplainResp>, (StatusCode, String)> {
-    let (board, last) = {
+    let (board, last, hist_notes) = {
         let g = sh.game.lock().unwrap();
-        (g.board.clone(), g.history.last().cloned())
+        (
+            g.board.clone(),
+            g.history.last().cloned(),
+            g.history.iter().map(|(_, n, _)| n.clone()).collect::<Vec<_>>(),
+        )
     };
     let depth = engine::default_depth();
     let b2 = board.clone();
     let analysis = tokio::task::spawn_blocking(move || engine::analyze(&b2, depth))
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    let ctx = xqcore::coach::make_position_ctx(&board, &analysis, last, &board)
+    let ctx = xqcore::coach::make_position_ctx(&board, &analysis, last, &board, &hist_notes)
         .ok_or((StatusCode::BAD_REQUEST, "当前无棋可走".to_string()))?;
     let settings = sh.settings.lock().unwrap().clone();
     let (text, source) = coach::explain_position(&settings, &ctx).await;
