@@ -213,7 +213,8 @@ pub extern "C" fn xq_explain_position(in_ptr: *const u8, in_len: usize, depth: c
         Err(e) => return emit_err(&e),
     };
     let analysis = engine::analyze(&board, depth);
-    let ctx = match coach::make_position_ctx(&board, &analysis, hist.last().cloned(), &board) {
+    let recent: Vec<String> = hist.iter().map(|(_, n, _)| n.clone()).collect();
+    let ctx = match coach::make_position_ctx(&board, &analysis, hist.last().cloned(), &board, &recent) {
         Some(c) => c,
         None => return emit_err("当前无棋可走"),
     };
