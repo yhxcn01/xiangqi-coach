@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#2b1d0e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <title>象棋思考教练</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -34,6 +36,9 @@
   }
   .status { font-size: 15px; min-height: 22px; color: #f5d9a8; text-align: center; }
   .status .check { color: #ff7b6b; font-weight: bold; }
+  .rate { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 10px; margin-left: 4px; vertical-align: 1px; }
+  .rate-best { background: rgba(30,125,79,.25); color: #7fe0ae; border: 1px solid #1e7d4f; }
+  .rate-loss { background: rgba(192,57,43,.22); color: #ffa08a; border: 1px solid #a5281b; }
   .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   button {
     border: none; border-radius: 8px; padding: 11px 8px; font-size: 14px;
@@ -153,6 +158,6 @@
   </div>
 </div>
 
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
