@@ -237,7 +237,7 @@ async function callLLMOnce(system, prompt) {
     body: JSON.stringify({
       model: settings.model,
       messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }],
-      temperature: 0.3, max_tokens: 600,
+      temperature: 0.3, max_tokens: 1200,
     }),
     signal: AbortSignal.timeout(30000),
   });
