@@ -45,6 +45,7 @@ self.onmessage = async (e) => {
       case 'explain_position': data = run('xq_explain_position', mj, depth || 4); break;
       case 'explain_piece':    data = run('xq_explain_piece', mj, sq, depth || 4); break;
       case 'review':           data = run('xq_review_turn', mj, turn, depth || 3); break;
+      case 'rate':             data = run('xq_rate_last', mj, depth || 3); break;
       default: throw new Error('未知命令 ' + cmd);
     }
     if (data && data.error) throw new Error(data.error);
