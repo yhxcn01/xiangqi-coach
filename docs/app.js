@@ -59,6 +59,7 @@ const audioBufs = {};   // name -> AudioBuffer
 const SFX_FILES = {
   move: 'sfx/move.wav', capture: 'sfx/capture.wav', select: 'sfx/select.wav',
   check: 'sfx/check.wav', win: 'sfx/win.wav', lose: 'sfx/lose.wav',
+  v_jiangjun: 'sfx/v_jiangjun.wav', v_win: 'sfx/v_win.wav', v_lose: 'sfx/v_lose.wav',
 };
 
 function oscBeep(freq, dur, type, gain, when) {
@@ -111,24 +112,37 @@ function playBuf(name) {
   return true;
 }
 
-// 语音播报（浏览器本地 TTS，对标天天象棋的将军/胜负播报）
-function say(text) {
-  if (settings.sound === false || settings.voice === false) return;
+// 语音播报：优先播放预生成的真人语音（离线合成），缺失时回退浏览器 TTS
+const VOICE_TEXT = { jiangjun: '将军', win: '绝杀，红方获胜', lose: '黑方获胜' };
+function ttsSay(text) {
   try {
+    const voices = speechSynthesis.getVoices();
+    const zh = voices.find((v) => v.lang && v.lang.toLowerCase().indexOf('zh') === 0);
+    if (!voices.length || !zh) return false; // 无中文语音包时放弃，避免静默失败
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'zh-CN'; u.rate = 1.15; u.pitch = 1; u.volume = 0.9;
-    speechSynthesis.cancel();
+    u.lang = 'zh-CN'; u.voice = zh; u.rate = 1.1;
+    if (speechSynthesis.speaking) speechSynthesis.cancel();
     speechSynthesis.speak(u);
-  } catch (_) {}
+    return true;
+  } catch (_) { return false; }
+}
+function say(name) {
+  if (settings.sound === false || settings.voice === false) return;
+  setTimeout(() => { // 让落子声先响，语音随后
+    ensureAudio().then((ok) => {
+      if (ok && playBuf('v_' + name)) return;
+      ttsSay(VOICE_TEXT[name] || name);
+    });
+  }, 130);
 }
 
 const sfx = {
   select:  () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('select'))) oscSfx.select(); }); },
   move:    () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('move'))) oscSfx.move(); }); },
   capture: () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('capture'))) oscSfx.capture(); }); },
-  check:   () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('check'))) oscSfx.check(); }); say('将军'); },
-  win:     () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('win'))) oscSfx.win(); }); say('绝杀，红方获胜'); },
-  lose:    () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('lose'))) oscSfx.lose(); }); say('胜负已分，黑方获胜'); },
+  check:   () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('check'))) oscSfx.check(); }); say('jiangjun'); },
+  win:     () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('win'))) oscSfx.win(); }); say('win'); },
+  lose:    () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('lose'))) oscSfx.lose(); }); say('lose'); },
 };
 function soundLabel() {
   $('btnSound').textContent = settings.sound === false ? '🔇 音效关' : '🔊 音效开';
