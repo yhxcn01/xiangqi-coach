@@ -16,7 +16,7 @@ let lastRate = null; // 最近一手玩家着法的引擎评分 {notation, loss,
 let settings = { base_url: 'https://open.bigmodel.cn/api/paas/v4', key: '', model: 'glm-4.7-flash', depth: 4 };
 
 // ---------- Worker RPC ----------
-const worker = new Worker('worker.js?v=5');
+const worker = new Worker('worker.js?v=6');
 let rpcId = 0;
 const pending = new Map();
 worker.onmessage = (e) => {
@@ -45,7 +45,7 @@ function loadLocal() {
     if (typeof s.base_url === 'string' && s.base_url) settings.base_url = s.base_url;
     if (typeof s.key === 'string') settings.key = s.key;
     if (typeof s.model === 'string' && s.model) settings.model = s.model;
-    if ([2, 3, 4, 5].includes(s.depth)) settings.depth = s.depth;
+    if ([2, 3, 4, 5, 6, 7].includes(s.depth)) settings.depth = s.depth;
   } catch (_) {}
 }
 function persistMoves() { localStorage.setItem(LS_MOVES, JSON.stringify(moves)); }
