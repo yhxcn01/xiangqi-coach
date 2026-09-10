@@ -72,7 +72,7 @@
   .modal { background: #33240f; border: 1px solid #8a5a24; border-radius: 12px; padding: 20px; width: 100%; max-width: 360px; }
   .modal h3 { color: #f5d9a8; margin-bottom: 12px; font-size: 16px; }
   .modal label { font-size: 12px; color: #b89a6a; display: block; margin: 10px 0 4px; }
-  .modal input {
+  .modal input, .modal select {
     width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #8a5a24;
     background: #241708; color: #f0e6d2; font-size: 14px; outline: none;
   }
@@ -150,6 +150,13 @@
       <option value="glm-5.3-flash"></option>
       <option value="glm-5.3"></option>
     </datalist>
+    <label>棋力（引擎搜索深度）</label>
+    <select id="inpDepth">
+      <option value="2">入门 · 深度2（秒回，适合初学）</option>
+      <option value="3">业余 · 深度3（约1秒）</option>
+      <option value="4" selected>进阶 · 深度4（约2秒）</option>
+      <option value="5">大师 · 深度5（中局可能 10~30 秒）</option>
+    </select>
     <div class="tip">普通 API Key（含免费 Key）：接口地址用 <b>…/api/paas/v4</b>，模型推荐免费的 glm-4.7-flash。<br>GLM Coding Plan 订阅 Key：接口地址必须选 <b>…/api/coding/paas/v4</b>，模型选 glm-5.3-flash（或 glm-5.3）。<br>Key 只保存在你自己的设备上。不配 Key 也能完整下棋，讲解自动降级为引擎基础提示。</div>
     <div class="row">
       <button class="btn-secondary" id="btnCancel">取消</button>
@@ -158,6 +165,6 @@
   </div>
 </div>
 
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>
