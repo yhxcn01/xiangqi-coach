@@ -16,7 +16,7 @@ let lastRate = null; // 最近一手玩家着法的引擎评分 {notation, loss,
 let settings = { base_url: 'https://open.bigmodel.cn/api/paas/v4', key: '', model: 'glm-4.7-flash', depth: 4 };
 
 // ---------- Worker RPC ----------
-const worker = new Worker('worker.js?v=6');
+const worker = new Worker('worker.js?v=7');
 let rpcId = 0;
 const pending = new Map();
 worker.onmessage = (e) => {
