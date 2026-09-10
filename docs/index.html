@@ -150,12 +150,14 @@
       <option value="glm-5.3-flash"></option>
       <option value="glm-5.3"></option>
     </datalist>
-    <label>棋力（引擎搜索深度）</label>
+    <label>棋力（引擎搜索深度，越大越强越慢）</label>
     <select id="inpDepth">
       <option value="2">入门 · 深度2（秒回，适合初学）</option>
       <option value="3">业余 · 深度3（约1秒）</option>
       <option value="4" selected>进阶 · 深度4（约2秒）</option>
-      <option value="5">大师 · 深度5（中局可能 10~30 秒）</option>
+      <option value="5">高手 · 深度5（约2~5秒）</option>
+      <option value="6">大师 · 深度6（约5~15秒）</option>
+      <option value="7">特大师 · 深度7（中局可达 30 秒）</option>
     </select>
     <div class="tip">普通 API Key（含免费 Key）：接口地址用 <b>…/api/paas/v4</b>，模型推荐免费的 glm-4.7-flash。<br>GLM Coding Plan 订阅 Key：接口地址必须选 <b>…/api/coding/paas/v4</b>，模型选 glm-5.3-flash（或 glm-5.3）。<br>Key 只保存在你自己的设备上。不配 Key 也能完整下棋，讲解自动降级为引擎基础提示。</div>
     <div class="row">
@@ -165,6 +167,6 @@
   </div>
 </div>
 
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
