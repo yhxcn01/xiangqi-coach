@@ -47,15 +47,21 @@ function loadLocal() {
     if (typeof s.model === 'string' && s.model) settings.model = s.model;
     if ([2, 3, 4, 5, 6, 7].includes(s.depth)) settings.depth = s.depth;
     if (typeof s.sound === 'boolean') settings.sound = s.sound;
+    if (typeof s.voice === 'boolean') settings.voice = s.voice;
   } catch (_) {}
 }
 function persistMoves() { localStorage.setItem(LS_MOVES, JSON.stringify(moves)); }
 function persistSettings() { localStorage.setItem(LS_SETTINGS, JSON.stringify(settings)); }
 
-// ---------- 音效（Web Audio 合成，无音频文件） ----------
+// ---------- 音效：真实木质落子采样（WAV 懒加载）+ 语音播报 + 振荡器兜底 ----------
 let audioCtx = null;
-function beep(freq, dur, type, gain, when) {
-  if (settings.sound === false) return;
+const audioBufs = {};   // name -> AudioBuffer
+const SFX_FILES = {
+  move: 'sfx/move.wav', capture: 'sfx/capture.wav', select: 'sfx/select.wav',
+  check: 'sfx/check.wav', win: 'sfx/win.wav', lose: 'sfx/lose.wav',
+};
+
+function oscBeep(freq, dur, type, gain, when) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -68,13 +74,61 @@ function beep(freq, dur, type, gain, when) {
     o.start(t0); o.stop(t0 + dur);
   } catch (_) {}
 }
+// 采样解码失败时的振荡器兜底音
+const oscSfx = {
+  select:  () => oscBeep(660, 0.05, 'square', 0.06),
+  move:    () => { oscBeep(220, 0.09, 'triangle', 0.2); oscBeep(440, 0.05, 'sine', 0.08, 0.02); },
+  capture: () => { oscBeep(160, 0.12, 'sawtooth', 0.16); oscBeep(320, 0.08, 'square', 0.09, 0.03); },
+  check:   () => { oscBeep(880, 0.09, 'square', 0.13); oscBeep(880, 0.09, 'square', 0.13, 0.13); },
+  win:     () => { [523, 659, 784, 1046].forEach((f, i) => oscBeep(f, 0.13, 'triangle', 0.14, i * 0.1)); },
+  lose:    () => { [392, 330, 262].forEach((f, i) => oscBeep(f, 0.16, 'triangle', 0.14, i * 0.12)); },
+};
+
+function ensureAudio() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (_) { return Promise.resolve(false); }
+  if (Object.keys(audioBufs).length) return Promise.resolve(true);
+  return Promise.all(Object.entries(SFX_FILES).map(([name, url]) =>
+    fetch(url)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(r.status))))
+      .then((ab) => audioCtx.decodeAudioData(ab))
+      .then((buf) => { audioBufs[name] = buf; })
+      .catch(() => {})
+  )).then(() => Object.keys(audioBufs).length > 0);
+}
+
+function playBuf(name) {
+  const b = audioBufs[name];
+  if (!b || !audioCtx) return false;
+  const src = audioCtx.createBufferSource();
+  src.buffer = b;
+  src.playbackRate.value = 0.95 + Math.random() * 0.1; // 每次轻微随机音高，模拟真实棋子起落
+  const g = audioCtx.createGain(); g.gain.value = 0.9;
+  src.connect(g).connect(audioCtx.destination);
+  src.start();
+  return true;
+}
+
+// 语音播报（浏览器本地 TTS，对标天天象棋的将军/胜负播报）
+function say(text) {
+  if (settings.sound === false || settings.voice === false) return;
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN'; u.rate = 1.15; u.pitch = 1; u.volume = 0.9;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch (_) {}
+}
+
 const sfx = {
-  select:  () => beep(660, 0.05, 'square', 0.06),
-  move:    () => { beep(220, 0.09, 'triangle', 0.2); beep(440, 0.05, 'sine', 0.08, 0.02); },
-  capture: () => { beep(160, 0.12, 'sawtooth', 0.16); beep(320, 0.08, 'square', 0.09, 0.03); },
-  check:   () => { beep(880, 0.09, 'square', 0.13); beep(880, 0.09, 'square', 0.13, 0.13); },
-  win:     () => { [523, 659, 784, 1046].forEach((f, i) => beep(f, 0.13, 'triangle', 0.14, i * 0.1)); },
-  lose:    () => { [392, 330, 262].forEach((f, i) => beep(f, 0.16, 'triangle', 0.14, i * 0.12)); },
+  select:  () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('select'))) oscSfx.select(); }); },
+  move:    () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('move'))) oscSfx.move(); }); },
+  capture: () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('capture'))) oscSfx.capture(); }); },
+  check:   () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('check'))) oscSfx.check(); }); say('将军'); },
+  win:     () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('win'))) oscSfx.win(); }); say('绝杀，红方获胜'); },
+  lose:    () => { if (settings.sound === false) return; ensureAudio().then((ok) => { if (!(ok && playBuf('lose'))) oscSfx.lose(); }); say('胜负已分，黑方获胜'); },
 };
 function soundLabel() {
   $('btnSound').textContent = settings.sound === false ? '🔇 音效关' : '🔊 音效开';
@@ -530,6 +584,7 @@ $('btnSettings').onclick = () => {
   $('inpBase').value = settings.base_url;
   $('inpModel').value = settings.model;
   $('inpDepth').value = String(settings.depth || 4);
+  $('inpVoice').checked = settings.voice !== false;
   $('inpKey').value = settings.key;
   $('inpKey').placeholder = settings.key ? '已保存（输入新 Key 可更换）' : '留空则使用引擎基础提示';
   mask.classList.add('show');
@@ -543,6 +598,7 @@ $('btnSave').onclick = () => {
   settings.model = model || 'glm-4.7-flash';
   settings.key = $('inpKey').value.trim();
   settings.depth = parseInt($('inpDepth').value, 10) || 4;
+  settings.voice = $('inpVoice').checked;
   persistSettings();
   mask.classList.remove('show');
   toast(settings.key ? '已保存，AI 讲解已就绪' : '已保存（未配 Key，用引擎基础提示）');
