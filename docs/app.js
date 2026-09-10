@@ -13,10 +13,10 @@ let state = null;          // 最近一次 WASM 返回的状态
 let selected = -1, targets = [];
 let busy = false, reviewBusy = false, explaining = false, typeTimer = null;
 let lastRate = null; // 最近一手玩家着法的引擎评分 {notation, loss, is_best, best}
-let settings = { base_url: 'https://open.bigmodel.cn/api/paas/v4', key: '', model: 'glm-4.7-flash' };
+let settings = { base_url: 'https://open.bigmodel.cn/api/paas/v4', key: '', model: 'glm-4.7-flash', depth: 4 };
 
 // ---------- Worker RPC ----------
-const worker = new Worker('worker.js?v=4');
+const worker = new Worker('worker.js?v=5');
 let rpcId = 0;
 const pending = new Map();
 worker.onmessage = (e) => {
@@ -45,6 +45,7 @@ function loadLocal() {
     if (typeof s.base_url === 'string' && s.base_url) settings.base_url = s.base_url;
     if (typeof s.key === 'string') settings.key = s.key;
     if (typeof s.model === 'string' && s.model) settings.model = s.model;
+    if ([2, 3, 4, 5].includes(s.depth)) settings.depth = s.depth;
   } catch (_) {}
 }
 function persistMoves() { localStorage.setItem(LS_MOVES, JSON.stringify(moves)); }
@@ -245,7 +246,7 @@ async function playerMove(from, to) {
 
 async function engineGo() {
   try {
-    const st = await rpc('engine', { depth: 4 });
+    const st = await rpc('engine', { depth: settings.depth || 4 });
     if (st.engine_move) moves.push(st.engine_move);
     state = st;
     persistMoves(); render();
@@ -437,6 +438,7 @@ const mask = $('modalMask');
 $('btnSettings').onclick = () => {
   $('inpBase').value = settings.base_url;
   $('inpModel').value = settings.model;
+  $('inpDepth').value = String(settings.depth || 4);
   $('inpKey').value = settings.key;
   $('inpKey').placeholder = settings.key ? '已保存（输入新 Key 可更换）' : '留空则使用引擎基础提示';
   mask.classList.add('show');
@@ -449,6 +451,7 @@ $('btnSave').onclick = () => {
   settings.base_url = base || 'https://open.bigmodel.cn/api/paas/v4';
   settings.model = model || 'glm-4.7-flash';
   settings.key = $('inpKey').value.trim();
+  settings.depth = parseInt($('inpDepth').value, 10) || 4;
   persistSettings();
   mask.classList.remove('show');
   toast(settings.key ? '已保存，AI 讲解已就绪' : '已保存（未配 Key，用引擎基础提示）');
