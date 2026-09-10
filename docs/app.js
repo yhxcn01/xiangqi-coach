@@ -46,10 +46,39 @@ function loadLocal() {
     if (typeof s.key === 'string') settings.key = s.key;
     if (typeof s.model === 'string' && s.model) settings.model = s.model;
     if ([2, 3, 4, 5, 6, 7].includes(s.depth)) settings.depth = s.depth;
+    if (typeof s.sound === 'boolean') settings.sound = s.sound;
   } catch (_) {}
 }
 function persistMoves() { localStorage.setItem(LS_MOVES, JSON.stringify(moves)); }
 function persistSettings() { localStorage.setItem(LS_SETTINGS, JSON.stringify(settings)); }
+
+// ---------- 音效（Web Audio 合成，无音频文件） ----------
+let audioCtx = null;
+function beep(freq, dur, type, gain, when) {
+  if (settings.sound === false) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const t0 = audioCtx.currentTime + (when || 0);
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type || 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(gain || 0.15, t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t0); o.stop(t0 + dur);
+  } catch (_) {}
+}
+const sfx = {
+  select:  () => beep(660, 0.05, 'square', 0.06),
+  move:    () => { beep(220, 0.09, 'triangle', 0.2); beep(440, 0.05, 'sine', 0.08, 0.02); },
+  capture: () => { beep(160, 0.12, 'sawtooth', 0.16); beep(320, 0.08, 'square', 0.09, 0.03); },
+  check:   () => { beep(880, 0.09, 'square', 0.13); beep(880, 0.09, 'square', 0.13, 0.13); },
+  win:     () => { [523, 659, 784, 1046].forEach((f, i) => beep(f, 0.13, 'triangle', 0.14, i * 0.1)); },
+  lose:    () => { [392, 330, 262].forEach((f, i) => beep(f, 0.16, 'triangle', 0.14, i * 0.12)); },
+};
+function soundLabel() {
+  $('btnSound').textContent = settings.sound === false ? '🔇 音效关' : '🔊 音效开';
+}
 
 // ---------- 棋盘绘制 ----------
 const X = (c) => PAD + c * CELL, Y = (r) => PAD + r * CELL;
@@ -69,7 +98,7 @@ window.addEventListener('resize', resizeBoard);
 
 function line(x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
 
-function draw() {
+function draw(hideSq) {
   const dpr = canvas.width / BW;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, BW, BH);
@@ -92,21 +121,20 @@ function draw() {
   if (state && moves.length) {
     const last = moves[moves.length - 1];
     mark(last.from); mark(last.to);
+    drawArrow(last.from, last.to, 'rgba(192,57,43,.6)'); // 最后一手箭头
   }
   if (state) {
+    // 路径显示：选中棋子 → 各合法目标的虚线引导线
+    if (selected >= 0 && targets.length && !animating) {
+      const sr = Math.floor(selected / 9), sc = selected % 9;
+      ctx.strokeStyle = 'rgba(30,125,79,.35)'; ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      targets.forEach((t) => line(X(sc), Y(sr), X(t % 9), Y(Math.floor(t / 9))));
+      ctx.setLineDash([]);
+    }
     state.cells.forEach((p, i) => {
-      if (p === 0) return;
-      const r = Math.floor(i / 9), c = i % 9;
-      const x = X(c), y = Y(r);
-      ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI * 2);
-      ctx.fillStyle = i === selected ? '#ffe9b0' : '#f8ecc9';
-      ctx.fill();
-      ctx.lineWidth = 2.5; ctx.strokeStyle = p > 0 ? '#c0392b' : '#2c3e50'; ctx.stroke();
-      ctx.beginPath(); ctx.arc(x, y, 21, 0, Math.PI * 2); ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = p > 0 ? '#c0392b' : '#2c3e50';
-      ctx.font = '26px KaiTi, STKaiti, "SimSun", serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(CHARS[p], x, y + 1);
+      if (p === 0 || i === hideSq) return;
+      drawPieceAt(X(i % 9), Y(Math.floor(i / 9)), p, i === selected);
     });
     targets.forEach((t) => {
       const r = Math.floor(t / 9), c = t % 9;
@@ -115,6 +143,49 @@ function draw() {
       state.cells[t] !== 0 ? ctx.stroke() : ctx.fill();
     });
   }
+}
+function drawPieceAt(x, y, p, isSel) {
+  ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI * 2);
+  ctx.fillStyle = isSel ? '#ffe9b0' : '#f8ecc9';
+  ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = p > 0 ? '#c0392b' : '#2c3e50'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, 21, 0, Math.PI * 2); ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = p > 0 ? '#c0392b' : '#2c3e50';
+  ctx.font = '26px KaiTi, STKaiti, "SimSun", serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(CHARS[p], x, y + 1);
+}
+function drawArrow(fromSq, toSq, color) {
+  const fr = Math.floor(fromSq / 9), fc = fromSq % 9, tr = Math.floor(toSq / 9), tc = toSq % 9;
+  const x1 = X(fc), y1 = Y(fr), x2 = X(tc), y2 = Y(tr);
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+  const sx = x1 + dx / len * 26, sy = y1 + dy / len * 26;
+  const ex = x2 - dx / len * 28, ey = y2 - dy / len * 28;
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  line(sx, sy, ex, ey);
+  const ang = Math.atan2(ey - sy, ex - sx), hl = 12;
+  ctx.beginPath();
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(ex - hl * Math.cos(ang - Math.PI / 6), ey - hl * Math.sin(ang - Math.PI / 6));
+  ctx.lineTo(ex - hl * Math.cos(ang + Math.PI / 6), ey - hl * Math.sin(ang + Math.PI / 6));
+  ctx.closePath(); ctx.fill();
+}
+// 走子滑动动画：终点棋子在动画期间隐藏，滑动棋子叠加绘制
+let animating = false;
+function animateMove(from, to, piece, done) {
+  const fr = Math.floor(from / 9), fc = from % 9, tr = Math.floor(to / 9), tc = to % 9;
+  const x1 = X(fc), y1 = Y(fr), x2 = X(tc), y2 = Y(tr);
+  const t0 = performance.now(), dur = 220;
+  animating = true;
+  function frame(t) {
+    const k = Math.min(1, (t - t0) / dur);
+    const e = 1 - Math.pow(1 - k, 2);
+    draw(to);
+    drawPieceAt(x1 + (x2 - x1) * e, y1 + (y2 - y1) * e, piece, false);
+    if (k < 1) requestAnimationFrame(frame);
+    else { animating = false; if (done) done(); }
+  }
+  requestAnimationFrame(frame);
 }
 function star(c, r) {
   const d = 5, l = 10;
@@ -220,6 +291,7 @@ canvas.addEventListener('pointerdown', async (e) => {
       // 对方棋子：不可走，但可「讲解这枚棋」（讲它的威胁与应对）
       targets = [];
     }
+    if (p > 0) sfx.select();
   } else {
     selected = -1; targets = [];
   }
@@ -228,12 +300,19 @@ canvas.addEventListener('pointerdown', async (e) => {
 
 async function playerMove(from, to) {
   busy = true; render();
+  const isCap = state && state.cells[to] !== 0;
   try {
     const st = await rpc('move', { from, to });
     moves.push({ from, to });
     state = st; selected = -1; targets = [];
     lastRate = null;
-    persistMoves(); render();
+    persistMoves();
+    isCap ? sfx.capture() : sfx.move();
+    if (state.in_check) sfx.check();
+    if (state.game_over) { state.game_over.includes('红方获胜') ? sfx.win() : sfx.lose(); }
+    render();
+    await new Promise((res) => animateMove(from, to, state.cells[to], res));
+    render();
     // 走子即时评分（对标文章「✓ 最佳」闭环）：与引擎最佳对比
     try {
       lastRate = await rpc('rate', { depth: 3 });
@@ -245,13 +324,20 @@ async function playerMove(from, to) {
 }
 
 async function engineGo() {
-  try {
-    const st = await rpc('engine', { depth: settings.depth || 4 });
-    if (st.engine_move) moves.push(st.engine_move);
-    state = st;
-    persistMoves(); render();
-    if (navigator.vibrate) navigator.vibrate(15);
-  } catch (_) { /* 对局结束等情况忽略 */ }
+  const prevCells = state ? state.cells.slice() : null;
+  const emv = await rpc('engine', { depth: settings.depth || 4 }).catch(() => null);
+  if (!emv) return;
+  if (emv.engine_move) moves.push(emv.engine_move);
+  state = emv;
+  persistMoves();
+  if (prevCells && emv.engine_move && prevCells[emv.engine_move.to] !== 0) sfx.capture(); else sfx.move();
+  if (state.in_check) sfx.check();
+  if (state.game_over) { state.game_over.includes('红方获胜') ? sfx.win() : sfx.lose(); }
+  if (navigator.vibrate) navigator.vibrate(15);
+  const f = emv.engine_move ? emv.engine_move.from : -1, t = emv.engine_move ? emv.engine_move.to : -1;
+  render();
+  if (f >= 0) await new Promise((res) => animateMove(f, t, state.cells[t], res));
+  render();
 }
 
 // ---------- 讲解 ----------
@@ -435,6 +521,11 @@ async function newGame() {
 
 // ---------- 设置 ----------
 const mask = $('modalMask');
+$('btnSound').onclick = () => {
+  settings.sound = settings.sound === false;
+  persistSettings(); soundLabel();
+  if (settings.sound !== false) sfx.select();
+};
 $('btnSettings').onclick = () => {
   $('inpBase').value = settings.base_url;
   $('inpModel').value = settings.model;
@@ -466,6 +557,7 @@ $('btnReview').onclick = runReview;
 
 async function init() {
   loadLocal();
+  soundLabel();
   try {
     state = await rpc('state');
   } catch (_) {
