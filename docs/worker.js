@@ -7,7 +7,7 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 function init() {
   if (!ready) {
     ready = (async () => {
-      const buf = await (await fetch('xqwasm.wasm?v=4')).arrayBuffer();
+      const buf = await (await fetch('xqwasm.wasm?v=5')).arrayBuffer();
       const { instance } = await WebAssembly.instantiate(buf);
       exports = instance.exports;
       memory = exports.memory;
