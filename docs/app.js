@@ -153,7 +153,13 @@ const X = (c) => PAD + c * CELL, Y = (r) => PAD + r * CELL;
 
 function resizeBoard() {
   const col = document.querySelector('.board-col');
-  const cssW = Math.max(280, Math.min(col.clientWidth - 16, 520));
+  const isRow = window.matchMedia('(min-width: 1280px)').matches;
+  // 宽度约束：布局列的实际可用宽度
+  const availW = Math.max(280, col.clientWidth - 16);
+  // 高度约束：视口高度减去页头/留白（列布局时按钮面板在下方，允许滚动查看）
+  const availH = Math.max(420, window.innerHeight - 130);
+  // 双约束取小，上限 900px：平板/大屏上棋盘撑满可用空间（对标天天象棋）
+  const cssW = Math.max(280, Math.min(availW, availH * BW / BH, 900));
   const scale = cssW / BW;
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   canvas.style.width = cssW + 'px';
@@ -163,6 +169,7 @@ function resizeBoard() {
   draw();
 }
 window.addEventListener('resize', resizeBoard);
+window.addEventListener('orientationchange', () => setTimeout(resizeBoard, 200));
 
 function line(x1, y1, x2, y2) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
 
