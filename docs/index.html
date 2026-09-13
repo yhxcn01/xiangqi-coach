@@ -48,6 +48,9 @@
   .btn-primary { background: linear-gradient(145deg,#c0392b,#a5281b); color: #fff; grid-column: span 2; font-size: 15px; }
   .btn-primary:active { filter: brightness(1.2); }
   .btn-review { background: linear-gradient(145deg,#1e7d4f,#16633d); color: #fff; grid-column: span 2; }
+  .btn-undo { background: linear-gradient(145deg,#e67e22,#b9770e); color: #fff; font-weight: 700; font-size: 16px; letter-spacing: 3px; }
+  .btn-new { background: linear-gradient(145deg,#2e86c1,#21618c); color: #fff; font-weight: 700; font-size: 16px; letter-spacing: 2px; }
+  .btn-undo:active, .btn-new:active { filter: brightness(1.18); }
   .btn-secondary { background: rgba(245,217,168,.15); color: #f5d9a8; border: 1px solid rgba(245,217,168,.3); }
   .btn-secondary:active { background: rgba(245,217,168,.3); }
   button:disabled { opacity: .4; cursor: not-allowed; }
@@ -100,9 +103,10 @@
     .side { max-width: 980px; }
     .card { padding: 16px 18px; }
     .status { font-size: 19px; }
-    button { font-size: 17px; min-height: 54px; }
-    .btn-primary { font-size: 19px; }
-    .btn-review { font-size: 17px; }
+    button { font-size: 18px; min-height: 58px; }
+    .btn-primary { font-size: 20px; }
+    .btn-review { font-size: 18px; }
+    .btn-undo, .btn-new { font-size: 21px; min-height: 64px; letter-spacing: 5px; }
     .explain-box { font-size: 16px; line-height: 1.85; }
     .explain-box .src { font-size: 12px; }
     .history { font-size: 15px; }
@@ -135,11 +139,11 @@
     <div class="card btns">
       <button class="btn-primary" id="btnExplainPos">🧑‍🏫 AI 讲解当前局面</button>
       <button class="btn-secondary" id="btnExplainPiece" disabled>🎯 讲解这枚棋</button>
-      <button class="btn-secondary" id="btnUndo" disabled>🔁 悔棋</button>
-      <button class="btn-secondary" id="btnNew">🆕 新对局</button>
+      <button class="btn-undo" id="btnUndo" disabled>🔁 悔 棋</button>
+      <button class="btn-new" id="btnNew">🆕 新对局</button>
+      <button class="btn-review" id="btnReview" disabled>🔍 复盘分析（找出亏损着法）</button>
       <button class="btn-secondary" id="btnSettings">⚙️ AI 设置</button>
       <button class="btn-secondary" id="btnSound">🔊 音效开</button>
-      <button class="btn-review" id="btnReview" disabled>🔍 复盘分析（找出亏损着法）</button>
     </div>
     <div class="card">
       <div class="explain-box" id="explain"><span class="thinking">选中棋子可走棋；点「AI 讲解当前局面」，教练告诉你这局面该怎么想。</span></div>
