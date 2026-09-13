@@ -159,7 +159,7 @@ function resizeBoard() {
   // 高度约束：视口高度减去页头/留白（列布局时按钮面板在下方，允许滚动查看）
   const availH = Math.max(420, window.innerHeight - 130);
   // 双约束取小，上限 900px：平板/大屏上棋盘撑满可用空间（对标天天象棋）
-  const cssW = Math.max(280, Math.min(availW, availH * BW / BH, 900));
+  const cssW = Math.max(280, Math.min(availW, availH * BW / BH, 1000));
   const scale = cssW / BW;
   const dpr = Math.min(window.devicePixelRatio || 1, 3);
   canvas.style.width = cssW + 'px';
