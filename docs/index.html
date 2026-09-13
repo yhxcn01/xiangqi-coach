@@ -29,7 +29,7 @@
     line-height: 0;
   }
   canvas { display: block; touch-action: manipulation; border-radius: 4px; }
-  .side { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 10px; }
+  .side { width: 100%; max-width: 640px; display: flex; flex-direction: column; gap: 10px; }
   .card {
     background: rgba(255,244,220,.06); border: 1px solid rgba(245,217,168,.22);
     border-radius: 10px; padding: 12px;
@@ -92,9 +92,10 @@
     padding: 10px 20px; border-radius: 10px; font-size: 13px; z-index: 20; display: none;
     max-width: 86vw; text-align: center;
   }
-  @media (min-width: 960px) {
+  @media (min-width: 1280px) {
     body { padding-top: 20px; }
     h1 { font-size: 26px; }
+    .wrap { max-width: 1320px; }
     .board-col { width: auto; flex: 1 1 auto; }
     .side { width: 360px; max-width: 360px; flex: 0 0 360px; }
   }
@@ -171,6 +172,6 @@
   </div>
 </div>
 
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>
