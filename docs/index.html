@@ -48,9 +48,21 @@
   .btn-primary { background: linear-gradient(145deg,#c0392b,#a5281b); color: #fff; grid-column: span 2; font-size: 15px; }
   .btn-primary:active { filter: brightness(1.2); }
   .btn-review { background: linear-gradient(145deg,#1e7d4f,#16633d); color: #fff; grid-column: span 2; }
-  .btn-undo { background: linear-gradient(145deg,#e67e22,#b9770e); color: #fff; font-weight: 700; font-size: 16px; letter-spacing: 3px; }
-  .btn-new { background: linear-gradient(145deg,#2e86c1,#21618c); color: #fff; font-weight: 700; font-size: 16px; letter-spacing: 2px; }
-  .btn-undo:active, .btn-new:active { filter: brightness(1.18); }
+  .btn-undo {
+    background: linear-gradient(145deg,#f5a623,#d35400); color: #fff;
+    font-weight: 900; font-size: 17px; letter-spacing: 3px;
+    border: 2px solid #6e3b00; text-shadow: 0 1px 3px rgba(0,0,0,.85);
+    box-shadow: 0 4px 0 #7e4a00, 0 5px 10px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .btn-new {
+    background: linear-gradient(145deg,#3498db,#1a5276); color: #fff;
+    font-weight: 900; font-size: 17px; letter-spacing: 3px;
+    border: 2px solid #0e2f4a; text-shadow: 0 1px 3px rgba(0,0,0,.85);
+    box-shadow: 0 4px 0 #14405f, 0 5px 10px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .btn-undo:active, .btn-new:active { transform: translateY(3px); filter: brightness(1.12); }
+  .btn-undo:active { box-shadow: 0 1px 0 #7e4a00, 0 2px 5px rgba(0,0,0,.5); }
+  .btn-new:active { box-shadow: 0 1px 0 #14405f, 0 2px 5px rgba(0,0,0,.5); }
   .btn-secondary { background: rgba(245,217,168,.15); color: #f5d9a8; border: 1px solid rgba(245,217,168,.3); }
   .btn-secondary:active { background: rgba(245,217,168,.3); }
   button:disabled { opacity: .4; cursor: not-allowed; }
@@ -106,7 +118,7 @@
     button { font-size: 18px; min-height: 58px; }
     .btn-primary { font-size: 20px; }
     .btn-review { font-size: 18px; }
-    .btn-undo, .btn-new { font-size: 21px; min-height: 64px; letter-spacing: 5px; }
+    .btn-undo, .btn-new { font-size: 23px; min-height: 70px; letter-spacing: 6px; border-width: 3px; }
     .explain-box { font-size: 16px; line-height: 1.85; }
     .explain-box .src { font-size: 12px; }
     .history { font-size: 15px; }
@@ -137,10 +149,10 @@
   <div class="side">
     <div class="card"><div class="status" id="status">载入中…</div></div>
     <div class="card btns">
-      <button class="btn-primary" id="btnExplainPos">🧑‍🏫 AI 讲解当前局面</button>
-      <button class="btn-secondary" id="btnExplainPiece" disabled>🎯 讲解这枚棋</button>
       <button class="btn-undo" id="btnUndo" disabled>🔁 悔 棋</button>
       <button class="btn-new" id="btnNew">🆕 新对局</button>
+      <button class="btn-primary" id="btnExplainPos">🧑‍🏫 AI 讲解当前局面</button>
+      <button class="btn-secondary" id="btnExplainPiece" disabled>🎯 讲解这枚棋</button>
       <button class="btn-review" id="btnReview" disabled>🔍 复盘分析（找出亏损着法）</button>
       <button class="btn-secondary" id="btnSettings">⚙️ AI 设置</button>
       <button class="btn-secondary" id="btnSound">🔊 音效开</button>
