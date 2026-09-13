@@ -92,6 +92,28 @@
     padding: 10px 20px; border-radius: 10px; font-size: 13px; z-index: 20; display: none;
     max-width: 86vw; text-align: center;
   }
+  /* 平板（700~1279）：面板与棋盘同宽、字号整体放大 */
+  @media (min-width: 700px) and (max-width: 1279px) {
+    h1 { font-size: 32px; letter-spacing: 8px; }
+    .subtitle { font-size: 14px; }
+    .wrap { max-width: 980px; }
+    .side { max-width: 980px; }
+    .card { padding: 16px 18px; }
+    .status { font-size: 19px; }
+    button { font-size: 17px; min-height: 54px; }
+    .btn-primary { font-size: 19px; }
+    .btn-review { font-size: 17px; }
+    .explain-box { font-size: 16px; line-height: 1.85; }
+    .explain-box .src { font-size: 12px; }
+    .history { font-size: 15px; }
+    .review-rows { font-size: 15px; }
+    .modal { max-width: 480px; }
+    .modal label { font-size: 14px; }
+    .modal input, .modal select { font-size: 16px; padding: 11px; }
+    .modal .tip { font-size: 13px; }
+    .over-banner { font-size: 24px; }
+    .toast { font-size: 15px; }
+  }
   @media (min-width: 1280px) {
     body { padding-top: 20px; }
     h1 { font-size: 26px; }
