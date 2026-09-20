@@ -244,7 +244,7 @@ function drawPieceAt(x, y, p, isSel) {
   ctx.beginPath(); ctx.arc(x, y, 20.5, 0, Math.PI * 2);
   ctx.strokeStyle = ring; ctx.lineWidth = 1.6; ctx.stroke();
   // 繁体粗笔画字：加粗 + 描边补粗 + 同色填充
-  ctx.font = 'bold 30px KaiTi, STKaiti, "BiauKai", "DFKai-SB", "Noto Serif CJK SC", SimSun, serif';
+  ctx.font = 'bold 30px QiZi, KaiTi, STKaiti, serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   ctx.strokeStyle = col; ctx.lineWidth = 1.8;
@@ -657,6 +657,10 @@ $('btnReview').onclick = runReview;
 async function init() {
   loadLocal();
   soundLabel();
+  // 棋子专用字体（子集化霞鹜文楷）加载完成后重绘，保证所有设备字形完全一致
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load('bold 30px QiZi', '帥將士象車馬砲兵卒相仕').then(() => draw()).catch(() => {});
+  }
   try {
     state = await rpc('state');
   } catch (_) {
