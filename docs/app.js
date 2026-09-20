@@ -235,6 +235,7 @@ function drawPieceAt(x, y, p, isSel) {
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   ctx.strokeStyle = col; ctx.lineWidth = 1.7;
   ctx.strokeText(CHARS[p], x, y + 1);
+  ctx.fillStyle = col; // 关键：填充必须与轮廓同色，否则字是空心的
   ctx.fillText(CHARS[p], x, y + 1);
 }
 function drawArrow(fromSq, toSq, color) {
