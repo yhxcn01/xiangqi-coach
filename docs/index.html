@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#2b1d0e">
+<link rel="preload" href="fonts/qizi.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -13,6 +14,11 @@
 <meta name="apple-mobile-web-app-title" content="象棋教练">
 <title>象棋思考教练</title>
 <style>
+  @font-face {
+    font-family: 'QiZi';
+    src: url('fonts/qizi.woff2') format('woff2');
+    font-display: block;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { overscroll-behavior-y: contain; }
   body {
@@ -215,6 +221,6 @@
   </div>
 </div>
 
-<script src="app.js?v=19"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>
