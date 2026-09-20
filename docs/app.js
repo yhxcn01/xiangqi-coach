@@ -5,7 +5,7 @@
 const $ = (id) => document.getElementById(id);
 const canvas = $('board'), ctx = canvas.getContext('2d');
 const CELL = 60, PAD = 40, BW = 560, BH = 620;
-const CHARS = {1:'帅',2:'仕',3:'相',4:'马',5:'车',6:'炮',7:'兵','-1':'将','-2':'士','-3':'象','-4':'马','-5':'车','-6':'砲','-7':'卒'};
+const CHARS = {1:'帥',2:'仕',3:'相',4:'馬',5:'車',6:'炮',7:'兵','-1':'將','-2':'士','-3':'象','-4':'馬','-5':'車','-6':'砲','-7':'卒'};
 const LS_MOVES = 'xq_moves_v1', LS_SETTINGS = 'xq_settings_v1';
 
 let moves = [];            // 权威棋谱：[{from,to},...]，刷新后从 localStorage 恢复
@@ -177,24 +177,21 @@ function draw(hideSq) {
   const dpr = canvas.width / BW;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, BW, BH);
-  ctx.strokeStyle = '#5d3c14'; ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#8a6230'; ctx.lineWidth = 1.3;
   for (let r = 0; r < 10; r++) line(X(0), Y(r), X(8), Y(r));
   for (let c = 0; c < 9; c++) {
     if (c === 0 || c === 8) line(X(c), Y(0), X(c), Y(9));
     else { line(X(c), Y(0), X(c), Y(4)); line(X(c), Y(5), X(c), Y(9)); }
   }
-  ctx.lineWidth = 3; ctx.strokeRect(X(0)-6, Y(0)-6, CELL*8+12, CELL*9+12);
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 2.5; ctx.strokeRect(X(0)-6, Y(0)-6, CELL*8+12, CELL*9+12);
+  ctx.lineWidth = 1.3;
   line(X(3), Y(0), X(5), Y(2)); line(X(5), Y(0), X(3), Y(2));
   line(X(3), Y(7), X(5), Y(9)); line(X(5), Y(7), X(3), Y(9));
   [[1,2],[7,2],[0,3],[2,3],[4,3],[6,3],[8,3],[1,7],[7,7],[0,6],[2,6],[4,6],[6,6],[8,6]].forEach(([c,r]) => star(c, r));
-  ctx.fillStyle = '#5d3c14'; ctx.font = 'bold 27px KaiTi, STKaiti, serif';
+  ctx.fillStyle = 'rgba(150,105,45,.85)'; ctx.font = 'bold 30px KaiTi, STKaiti, serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.lineJoin = 'round'; ctx.strokeStyle = '#5d3c14'; ctx.lineWidth = 1.2;
-  ctx.strokeText('楚    河', PAD + CELL * 2, Y(4.5));
-  ctx.fillText('楚    河', PAD + CELL * 2, Y(4.5));
-  ctx.strokeText('汉    界', PAD + CELL * 6, Y(4.5));
-  ctx.fillText('汉    界', PAD + CELL * 6, Y(4.5));
+  ctx.fillText('楚  河', PAD + CELL * 1.8, Y(4.5));
+  ctx.fillText('汉  界', PAD + CELL * 6.2, Y(4.5));
 
   if (state && moves.length) {
     const last = moves[moves.length - 1];
@@ -223,19 +220,36 @@ function draw(hideSq) {
   }
 }
 function drawPieceAt(x, y, p, isSel) {
-  const col = p > 0 ? '#b3271a' : '#1f3247'; // 略加深字色，提升对比
-  ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI * 2);
-  ctx.fillStyle = isSel ? '#ffe9b0' : '#f8ecc9';
+  const red = p > 0;
+  const col = red ? '#b3271a' : '#26261f';        // 字色
+  const ring = red ? '#c0392b' : '#5a4326';        // 内环色 = 棋方颜色
+  // 底部投影（棋子悬浮感）
+  ctx.save();
+  ctx.shadowColor = 'rgba(60,35,10,.4)';
+  ctx.shadowBlur = 6;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 4;
+  // 象牙渐变面
+  const g = ctx.createRadialGradient(x - 8, y - 9, 4, x, y, 27);
+  g.addColorStop(0, isSel ? '#fff8e2' : '#fdf4dd');
+  g.addColorStop(0.65, '#f3e2b8');
+  g.addColorStop(1, '#dfc48c');
+  ctx.beginPath(); ctx.arc(x, y, 26, 0, Math.PI * 2);
+  ctx.fillStyle = g;
   ctx.fill();
-  ctx.lineWidth = 2.5; ctx.strokeStyle = col; ctx.stroke();
-  ctx.beginPath(); ctx.arc(x, y, 21, 0, Math.PI * 2); ctx.lineWidth = 1; ctx.stroke();
-  // 粗笔画字：加粗字重 + 描边补粗（缺楷体的设备也能保证笔画厚度）
-  ctx.font = 'bold 27px KaiTi, STKaiti, "BiauKai", "DFKai-SB", "Noto Serif CJK SC", SimSun, serif';
+  ctx.restore();
+  // 双细环：外深棕边 + 内环（棋方色）
+  ctx.beginPath(); ctx.arc(x, y, 25.2, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(90,60,20,.85)'; ctx.lineWidth = 1.4; ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, y, 20.5, 0, Math.PI * 2);
+  ctx.strokeStyle = ring; ctx.lineWidth = 1.6; ctx.stroke();
+  // 繁体粗笔画字：加粗 + 描边补粗 + 同色填充
+  ctx.font = 'bold 30px KaiTi, STKaiti, "BiauKai", "DFKai-SB", "Noto Serif CJK SC", SimSun, serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  ctx.strokeStyle = col; ctx.lineWidth = 1.7;
+  ctx.strokeStyle = col; ctx.lineWidth = 1.8;
   ctx.strokeText(CHARS[p], x, y + 1);
-  ctx.fillStyle = col; // 关键：填充必须与轮廓同色，否则字是空心的
+  ctx.fillStyle = col;
   ctx.fillText(CHARS[p], x, y + 1);
 }
 function drawArrow(fromSq, toSq, color) {
