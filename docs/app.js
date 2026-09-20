@@ -243,11 +243,11 @@ function drawPieceAt(x, y, p, isSel) {
   ctx.strokeStyle = 'rgba(90,60,20,.85)'; ctx.lineWidth = 1.4; ctx.stroke();
   ctx.beginPath(); ctx.arc(x, y, 20.5, 0, Math.PI * 2);
   ctx.strokeStyle = ring; ctx.lineWidth = 1.6; ctx.stroke();
-  // 繁体粗笔画字：加粗 + 描边补粗 + 同色填充
-  ctx.font = 'bold 30px QiZi, KaiTi, STKaiti, serif';
+  // 宽松大字：字号撑满内环，描边只轻补厚度，保留笔画间隙（对标多乐宽松感）
+  ctx.font = 'bold 34px QiZi, KaiTi, STKaiti, serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  ctx.strokeStyle = col; ctx.lineWidth = 1.8;
+  ctx.strokeStyle = col; ctx.lineWidth = 1.0;
   ctx.strokeText(CHARS[p], x, y + 1);
   ctx.fillStyle = col;
   ctx.fillText(CHARS[p], x, y + 1);
