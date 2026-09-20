@@ -188,9 +188,12 @@ function draw(hideSq) {
   line(X(3), Y(0), X(5), Y(2)); line(X(5), Y(0), X(3), Y(2));
   line(X(3), Y(7), X(5), Y(9)); line(X(5), Y(7), X(3), Y(9));
   [[1,2],[7,2],[0,3],[2,3],[4,3],[6,3],[8,3],[1,7],[7,7],[0,6],[2,6],[4,6],[6,6],[8,6]].forEach(([c,r]) => star(c, r));
-  ctx.fillStyle = '#5d3c14'; ctx.font = '26px KaiTi, STKaiti, serif';
+  ctx.fillStyle = '#5d3c14'; ctx.font = 'bold 27px KaiTi, STKaiti, serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round'; ctx.strokeStyle = '#5d3c14'; ctx.lineWidth = 1.2;
+  ctx.strokeText('楚    河', PAD + CELL * 2, Y(4.5));
   ctx.fillText('楚    河', PAD + CELL * 2, Y(4.5));
+  ctx.strokeText('汉    界', PAD + CELL * 6, Y(4.5));
   ctx.fillText('汉    界', PAD + CELL * 6, Y(4.5));
 
   if (state && moves.length) {
@@ -220,14 +223,18 @@ function draw(hideSq) {
   }
 }
 function drawPieceAt(x, y, p, isSel) {
+  const col = p > 0 ? '#b3271a' : '#1f3247'; // 略加深字色，提升对比
   ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI * 2);
   ctx.fillStyle = isSel ? '#ffe9b0' : '#f8ecc9';
   ctx.fill();
-  ctx.lineWidth = 2.5; ctx.strokeStyle = p > 0 ? '#c0392b' : '#2c3e50'; ctx.stroke();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = col; ctx.stroke();
   ctx.beginPath(); ctx.arc(x, y, 21, 0, Math.PI * 2); ctx.lineWidth = 1; ctx.stroke();
-  ctx.fillStyle = p > 0 ? '#c0392b' : '#2c3e50';
-  ctx.font = '26px KaiTi, STKaiti, "SimSun", serif';
+  // 粗笔画字：加粗字重 + 描边补粗（缺楷体的设备也能保证笔画厚度）
+  ctx.font = 'bold 27px KaiTi, STKaiti, "BiauKai", "DFKai-SB", "Noto Serif CJK SC", SimSun, serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.strokeStyle = col; ctx.lineWidth = 1.7;
+  ctx.strokeText(CHARS[p], x, y + 1);
   ctx.fillText(CHARS[p], x, y + 1);
 }
 function drawArrow(fromSq, toSq, color) {
